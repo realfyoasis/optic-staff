@@ -17,31 +17,10 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
   const { state, addFeed } = useAppStore();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  const handleVideoUpload = (videoData: {
-    file: File;
-    name: string;
-    location: string;
-    description: string;
-  }) => {
-    // Create persistent object URL for the uploaded video
-    const videoUrl = URL.createObjectURL(videoData.file);
-    
-    const newFeed: VideoFeed = {
-      id: `feed-${Date.now()}`,
-      name: videoData.name,
-      status: 'active',
-      location: videoData.location,
-      lastFrame: videoUrl,
-      incidents: [],
-      employees: [],
-    };
-    
-    addFeed(newFeed);
-    
-    toast({
-      title: "Video Feed Added",
-      description: `${videoData.name} is now active and ready for facial recognition.`,
-    });
+  const handleVideoUpload = (videoUrl: string) => {
+    // VideoUploadModal handles feed creation internally
+    // This callback is just for additional actions if needed
+    console.log('Video uploaded:', videoUrl);
   };
 
   return (
