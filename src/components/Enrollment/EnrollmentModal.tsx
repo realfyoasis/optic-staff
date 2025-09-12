@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import EnrollmentCanvas from './EnrollmentCanvas';
-import { Employee } from '@/types/employee';
+import VideoUploadModal from '@/components/VideoFeed/VideoUploadModal';
+import { Employee, VideoFeed } from '@/types/employee';
+import { useAppStore } from '@/store/appStore';
 import { 
   User, 
   Mail, 
@@ -15,7 +17,8 @@ import {
   X,
   CheckCircle,
   Camera,
-  Crop
+  Crop,
+  Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,19 +40,31 @@ interface EnrollmentData {
 
 const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModalProps) => {
   const { toast } = useToast();
-  const [step, setStep] = useState<'capture' | 'form' | 'processing' | 'complete'>('capture');
+  const { addEmployee, updateFeed, addFeed, state } = useAppStore();
+  const [step, setStep] = useState<'upload' | 'capture' | 'form' | 'processing' | 'complete'>('upload');
   const [enrollmentData, setEnrollmentData] = useState<EnrollmentData>({
     id: '',
     name: '',
     role: '',
     contact: '',
   });
-const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentFeedImage, setCurrentFeedImage] = useState<string>(feedImage || '');
   // Video frame capture support
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [frameImage, setFrameImage] = useState<string | null>(null);
-  const isVideoSource = !!feedImage && (feedImage.startsWith('blob:') || /(mp4|webm|ogg|mov)$/i.test(feedImage));
+  const [showVideoUpload, setShowVideoUpload] = useState(false);
+  const isVideoSource = !!currentFeedImage && (currentFeedImage.startsWith('blob:') || /(mp4|webm|ogg|mov)$/i.test(currentFeedImage));
+
+  // Set initial step based on feedId
+  useState(() => {
+    if (feedId === 'upload' && !currentFeedImage) {
+      setStep('upload');
+    } else {
+      setStep('capture');
+    }
+  });
 
   const grabFrame = () => {
     const video = videoRef.current;
@@ -82,8 +97,14 @@ const [isSubmitting, setIsSubmitting] = useState(false);
     }));
   };
 
+  const handleVideoUploaded = (videoUrl: string) => {
+    setCurrentFeedImage(videoUrl);
+    setShowVideoUpload(false);
+    setStep('capture');
+  };
+
   const handleSubmit = async () => {
-    if (!enrollmentData.id || !enrollmentData.name || !enrollmentData.role || !enrollmentData.contact) {
+    if (!enrollmentData.name || !enrollmentData.role || !enrollmentData.contact) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -95,39 +116,77 @@ const [isSubmitting, setIsSubmitting] = useState(false);
     setIsSubmitting(true);
     setStep('processing');
 
-    // Simulate enrollment process
-    setTimeout(() => {
+    try {
+      // Simulate enrollment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Create new employee
       const newEmployee: Employee = {
-        id: enrollmentData.id,
+        id: `emp-${Date.now()}`,
         name: enrollmentData.name,
         role: enrollmentData.role,
         contact: enrollmentData.contact,
-        status: 'offline',
-        currentLocation: 'Unknown',
+        status: 'online',
+        currentLocation: feedId === 'upload' ? 'Unknown' : `Camera ${feedId}`,
         lastSeen: new Date(),
+        embeddingPath: enrollmentData.faceCrop,
         image: enrollmentData.faceCrop,
       };
 
-      // In a real app, this would save to backend
-      console.log('Enrolling new employee:', newEmployee);
-      
-      setStep('complete');
-      setIsSubmitting(false);
+      addEmployee(newEmployee);
+
+      // Handle video upload case
+      if (feedId === 'upload' && currentFeedImage) {
+        const newFeed: VideoFeed = {
+          id: `feed-${Date.now()}`,
+          name: `Camera ${Date.now().toString().slice(-4)}`,
+          status: 'active',
+          location: 'Uploaded Location',
+          lastFrame: currentFeedImage,
+          incidents: [],
+          employees: [],
+        };
+        addFeed(newFeed);
+      } else if (feedId !== 'upload') {
+        // Update existing feed
+        const existingFeed = state.feeds.find(f => f.id === feedId);
+        if (existingFeed) {
+          updateFeed({
+            ...existingFeed,
+            employees: [
+              ...existingFeed.employees,
+              {
+                employeeId: newEmployee.id,
+                name: newEmployee.name,
+                confidence: 0.95,
+                bbox: enrollmentData.boundingBox || { x: 100, y: 100, width: 150, height: 200 },
+                timestamp: new Date(),
+              }
+            ]
+          });
+        }
+      }
 
       toast({
         title: "Employee Enrolled Successfully",
-        description: `${enrollmentData.name} has been added to the system.`,
+        description: `${enrollmentData.name} has been enrolled and can now be detected on camera feeds.`,
       });
 
-      // Auto-close after 2 seconds
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
-    }, 3000);
+      setStep('complete');
+    } catch (error) {
+      toast({
+        title: "Enrollment Failed",
+        description: "Failed to enroll employee. Please try again.",
+        variant: "destructive",
+      });
+      setStep('form');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    setStep('capture');
+    setStep(feedId === 'upload' && !currentFeedImage ? 'upload' : 'capture');
     setEnrollmentData({
       id: '',
       name: '',
@@ -135,12 +194,36 @@ const [isSubmitting, setIsSubmitting] = useState(false);
       contact: '',
     });
     setFrameImage(null);
+    setCurrentFeedImage(feedImage || '');
     setIsSubmitting(false);
+    setShowVideoUpload(false);
     onClose();
   };
 
   const renderStepContent = () => {
     switch (step) {
+      case 'upload':
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <Upload className="h-12 w-12 text-primary mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-foreground">Upload Video Feed</h3>
+              <p className="text-sm text-muted-foreground">
+                Upload a video file to create a new camera feed for employee enrollment
+              </p>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => setShowVideoUpload(true)}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Select Video File
+              </Button>
+            </div>
+          </div>
+        );
       case 'capture':
         return (
           <div className="space-y-6">
@@ -169,7 +252,7 @@ const [isSubmitting, setIsSubmitting] = useState(false);
                 <div>
                   <video
                     ref={videoRef}
-                    src={feedImage}
+                    src={currentFeedImage}
                     className="w-full rounded-lg border"
                     autoPlay
                     loop
@@ -185,15 +268,22 @@ const [isSubmitting, setIsSubmitting] = useState(false);
                   <canvas ref={canvasRef} className="hidden" />
                 </div>
               )
-            ) : feedImage ? (
+            ) : currentFeedImage ? (
               <EnrollmentCanvas 
-                imageUrl={feedImage}
+                imageUrl={currentFeedImage}
                 onFaceCapture={handleFaceCapture}
               />
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No feed image available. Please try again from a camera feed.</p>
+                  <p className="text-muted-foreground">No feed image available. Please upload a video first.</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => setStep('upload')}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Video
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -327,6 +417,14 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
   const renderActions = () => {
     switch (step) {
+      case 'upload':
+        return (
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+          </div>
+        );
       case 'capture':
         return (
           <div className="flex justify-end space-x-3">
@@ -387,6 +485,13 @@ const [isSubmitting, setIsSubmitting] = useState(false);
           {renderActions()}
         </div>
       </DialogContent>
+
+      {/* Video Upload Modal */}
+      <VideoUploadModal 
+        isOpen={showVideoUpload}
+        onClose={() => setShowVideoUpload(false)}
+        onVideoUpload={handleVideoUploaded}
+      />
     </Dialog>
   );
 };

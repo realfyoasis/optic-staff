@@ -3,48 +3,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, VideoIcon, MapPin, FileVideo, X } from 'lucide-react';
 import { VideoFeed } from '@/types/employee';
+import { useAppStore } from '@/store/appStore';
+import { Upload, Video, X } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface VideoUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onVideoUpload: (videoData: {
-    file: File;
-    name: string;
-    location: string;
-    description: string;
-  }) => void;
+  onVideoUpload: (videoUrl: string) => void;
 }
 
 const VideoUploadModal = ({ isOpen, onClose, onVideoUpload }: VideoUploadModalProps) => {
   const { toast } = useToast();
+  const { addFeed } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [videoName, setVideoName] = useState('');
-  const [location, setLocation] = useState('');
-  const [description, setDescription] = useState('');
+  const [feedName, setFeedName] = useState('');
+  const [feedLocation, setFeedLocation] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const fileType = file.type;
-      if (fileType.startsWith('video/')) {
+      if (file.type.startsWith('video/')) {
         setSelectedFile(file);
-        setVideoName(file.name.replace(/\.[^/.]+$/, '')); // Remove extension
-        
-        // Create preview URL
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
+        setFeedName(file.name.replace(/\.[^/.]+$/, ""));
       } else {
         toast({
           title: "Invalid File Type",
-          description: "Please select a valid video file (MP4, AVI, MOV, etc.)",
+          description: "Please select a video file.",
           variant: "destructive",
         });
       }
@@ -52,7 +41,7 @@ const VideoUploadModal = ({ isOpen, onClose, onVideoUpload }: VideoUploadModalPr
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !videoName || !location) {
+    if (!selectedFile || !feedName || !feedLocation) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields and select a video file.",
@@ -62,28 +51,29 @@ const VideoUploadModal = ({ isOpen, onClose, onVideoUpload }: VideoUploadModalPr
     }
 
     setIsUploading(true);
-
     try {
-      // Simulate upload process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const videoUrl = URL.createObjectURL(selectedFile);
+      const newFeed: VideoFeed = {
+        id: `feed-${Date.now()}`,
+        name: feedName,
+        status: 'active',
+        location: feedLocation,
+        lastFrame: videoUrl,
+        incidents: [],
+        employees: [],
+      };
 
-      onVideoUpload({
-        file: selectedFile,
-        name: videoName,
-        location,
-        description,
-      });
-
+      addFeed(newFeed);
+      onVideoUpload(videoUrl);
       toast({
         title: "Video Uploaded Successfully",
-        description: `${videoName} has been added to camera feeds.`,
+        description: `${feedName} has been added to your camera feeds.`,
       });
-
       handleClose();
     } catch (error) {
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading your video. Please try again.",
+        description: "Failed to upload video. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -93,151 +83,93 @@ const VideoUploadModal = ({ isOpen, onClose, onVideoUpload }: VideoUploadModalPr
 
   const handleClose = () => {
     setSelectedFile(null);
-    setVideoName('');
-    setLocation('');
-    setDescription('');
+    setFeedName('');
+    setFeedLocation('');
     setIsUploading(false);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl('');
-    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     onClose();
   };
 
-  const removeFile = () => {
-    setSelectedFile(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl('');
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <VideoIcon className="h-5 w-5 text-primary" />
-            Upload Camera Video Feed
+          <DialogTitle className="flex items-center space-x-2">
+            <Video className="h-5 w-5 text-primary" />
+            <span>Upload Video Feed</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          {/* File Selection */}
-          <div className="space-y-3">
-            <Label>Video File *</Label>
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-              {selectedFile ? (
-                <div className="space-y-3">
-                  {previewUrl && (
-                    <video 
-                      src={previewUrl} 
-                      className="w-full h-32 object-cover rounded-md"
-                      controls
-                    />
-                  )}
-                  <div className="flex items-center justify-between p-2 bg-muted rounded-md">
-                    <div className="flex items-center gap-2">
-                      <FileVideo className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">{selectedFile.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={removeFile}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <VideoIcon className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <div>
-                    <p className="text-lg font-medium">Select Video File</p>
-                    <p className="text-sm text-muted-foreground">
-                      MP4, AVI, MOV, and other video formats supported
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-2"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Browse Files
-                  </Button>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-
-          {/* Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="videoName">Camera Name *</Label>
-              <Input
-                id="videoName"
-                value={videoName}
-                onChange={(e) => setVideoName(e.target.value)}
-                placeholder="e.g., Main Entrance Camera"
-                className="w-full"
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Video File</Label>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 justify-start"
+                disabled={isUploading}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Select Video File
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={handleFileSelect}
+                className="hidden"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Camera Location *</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g., Building A - Main Entrance"
-                  className="pl-10"
-                />
+            {selectedFile && (
+              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
+                <div className="flex items-center space-x-2">
+                  <Video className="h-4 w-4 text-primary" />
+                  <span className="font-medium">{selectedFile.name}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedFile(null)}
+                  disabled={isUploading}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Additional notes about this camera feed..."
-              rows={3}
+            <Label htmlFor="feedName" className="text-sm font-medium">Feed Name</Label>
+            <Input
+              id="feedName"
+              value={feedName}
+              onChange={(e) => setFeedName(e.target.value)}
+              placeholder="e.g., Main Entrance Camera"
+              disabled={isUploading}
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={handleClose}
+          <div className="space-y-2">
+            <Label htmlFor="feedLocation" className="text-sm font-medium">Location</Label>
+            <Input
+              id="feedLocation"
+              value={feedLocation}
+              onChange={(e) => setFeedLocation(e.target.value)}
+              placeholder="e.g., Building A - Floor 1"
               disabled={isUploading}
-              className="flex-1"
-            >
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={handleClose} disabled={isUploading}>
               Cancel
             </Button>
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || !videoName || !location || isUploading}
-              className="flex-1"
+            <Button 
+              onClick={handleUpload} 
+              disabled={!selectedFile || !feedName || !feedLocation || isUploading}
             >
               {isUploading ? (
                 <>

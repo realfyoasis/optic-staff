@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { YoloModel } from '@/types/employee';
+import { useAppStore } from '@/store/appStore';
 import { 
   Upload, 
   File, 
@@ -26,40 +27,14 @@ interface ModelUploadProps {
 
 const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
   const { toast } = useToast();
+  const { state, addModel, updateModel, deleteModel } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [uploadedModels, setUploadedModels] = useState<YoloModel[]>([
-    {
-      id: 'model001',
-      name: 'YOLOv8n Person Detection',
-      type: 'person_detection',
-      fileName: 'yolov8n.pt',
-      uploadDate: new Date(Date.now() - 86400000), // 1 day ago
-      isActive: true,
-      appliedFeeds: ['cam001', 'cam002', 'cam003'],
-    },
-    {
-      id: 'model002', 
-      name: 'Fire Detection Model',
-      type: 'incident_detection',
-      fileName: 'fire_detection.pt',
-      uploadDate: new Date(Date.now() - 172800000), // 2 days ago
-      isActive: false,
-      appliedFeeds: [],
-    },
-  ]);
   
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [modelName, setModelName] = useState('');
   const [modelType, setModelType] = useState<'person_detection' | 'incident_detection'>('person_detection');
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]);
-
-  const availableFeeds = [
-    { id: 'cam001', name: 'Office Floor 1' },
-    { id: 'cam002', name: 'Reception Area' },
-    { id: 'cam003', name: 'Hallway B' },
-  ];
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -94,7 +69,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       const newModel: YoloModel = {
-        id: `model${String(uploadedModels.length + 1).padStart(3, '0')}`,
+        id: `model${String(state.models.length + 1).padStart(3, '0')}`,
         name: modelName,
         type: modelType,
         fileName: selectedFile.name,
@@ -103,7 +78,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
         appliedFeeds: selectedFeeds,
       };
 
-      setUploadedModels(prev => [...prev, newModel]);
+      addModel(newModel);
       onModelUpload(newModel);
 
       toast({
@@ -132,14 +107,13 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
   };
 
   const handleToggleModel = (modelId: string) => {
-    setUploadedModels(prev => prev.map(model => 
-      model.id === modelId 
-        ? { ...model, isActive: !model.isActive }
-        : model
-    ));
-    
-    const model = uploadedModels.find(m => m.id === modelId);
+    const model = state.models.find(m => m.id === modelId);
     if (model) {
+      updateModel({
+        ...model,
+        isActive: !model.isActive
+      });
+      
       toast({
         title: model.isActive ? "Model Deactivated" : "Model Activated",
         description: `${model.name} has been ${model.isActive ? 'deactivated' : 'activated'}.`,
@@ -147,10 +121,10 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
     }
   };
 
-  const handleDeleteModel = (modelId: string) => {
-    const model = uploadedModels.find(m => m.id === modelId);
+  const handleDeleteModelAction = (modelId: string) => {
+    const model = state.models.find(m => m.id === modelId);
     if (model) {
-      setUploadedModels(prev => prev.filter(m => m.id !== modelId));
+      deleteModel(modelId);
       toast({
         title: "Model Deleted",
         description: `${model.name} has been removed from the system.`,
@@ -261,12 +235,12 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
             <div className="space-y-4">
               <Label className="text-sm font-medium">Deploy to Camera Feeds</Label>
               <div className="space-y-3 max-h-32 overflow-y-auto">
-                {availableFeeds.length === 0 ? (
+                {state.feeds.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground text-sm">
                     No camera feeds available. Upload videos first.
                   </div>
                 ) : (
-                  availableFeeds.map((feed) => (
+                  state.feeds.map((feed) => (
                     <div key={feed.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={feed.id}
@@ -275,7 +249,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
                         disabled={isUploading}
                       />
                       <Label htmlFor={feed.id} className="text-sm font-normal">
-                        {feed.name}
+                        {feed.name} - {feed.location}
                       </Label>
                     </div>
                   ))
@@ -312,7 +286,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
         
         <CardContent>
           <div className="space-y-4">
-            {uploadedModels.map((model) => {
+            {state.models.map((model) => {
               const TypeIcon = getModelTypeIcon(model.type);
               
               return (
@@ -370,7 +344,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteModel(model.id)}
+                        onClick={() => handleDeleteModelAction(model.id)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -381,7 +355,7 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
               );
             })}
             
-            {uploadedModels.length === 0 && (
+            {state.models.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No YOLO models deployed yet.</p>

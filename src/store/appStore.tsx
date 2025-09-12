@@ -22,65 +22,106 @@ type AppAction =
   | { type: 'ADD_INCIDENT'; payload: Incident }
   | { type: 'UPDATE_FEEDS'; payload: VideoFeed[] };
 
+// localStorage persistence helpers
+const saveToStorage = (key: string, data: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error('Failed to save to localStorage:', error);
+  }
+};
+
+const loadFromStorage = (key: string, defaultValue: any) => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (error) {
+    console.error('Failed to load from localStorage:', error);
+    return defaultValue;
+  }
+};
+
 const initialState: AppState = {
-  feeds: [],
-  employees: [],
-  models: [],
+  feeds: loadFromStorage('feeds', []),
+  employees: loadFromStorage('employees', []),
+  models: loadFromStorage('models', []),
   activityLogs: [],
   incidents: []
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
+  let newState: AppState;
+  
   switch (action.type) {
     case 'ADD_FEED':
-      return { ...state, feeds: [...state.feeds, action.payload] };
+      newState = { ...state, feeds: [...state.feeds, action.payload] };
+      break;
     case 'UPDATE_FEED':
-      return {
+      newState = {
         ...state,
         feeds: state.feeds.map(feed =>
           feed.id === action.payload.id ? action.payload : feed
         )
       };
+      break;
     case 'DELETE_FEED':
-      return {
+      newState = {
         ...state,
         feeds: state.feeds.filter(feed => feed.id !== action.payload)
       };
+      break;
     case 'ADD_EMPLOYEE':
-      return { ...state, employees: [...state.employees, action.payload] };
+      newState = { ...state, employees: [...state.employees, action.payload] };
+      break;
     case 'UPDATE_EMPLOYEE':
-      return {
+      newState = {
         ...state,
         employees: state.employees.map(emp =>
           emp.id === action.payload.id ? action.payload : emp
         )
       };
+      break;
     case 'ADD_MODEL':
-      return { ...state, models: [...state.models, action.payload] };
+      newState = { ...state, models: [...state.models, action.payload] };
+      break;
     case 'UPDATE_MODEL':
-      return {
+      newState = {
         ...state,
         models: state.models.map(model =>
           model.id === action.payload.id ? action.payload : model
         )
       };
+      break;
     case 'DELETE_MODEL':
-      return {
+      newState = {
         ...state,
         models: state.models.filter(model => model.id !== action.payload)
       };
+      break;
     case 'ADD_ACTIVITY_LOG':
-      return {
+      newState = {
         ...state,
         activityLogs: [action.payload, ...state.activityLogs.slice(0, 49)]
       };
+      break;
     case 'ADD_INCIDENT':
-      return { ...state, incidents: [action.payload, ...state.incidents] };
+      newState = { ...state, incidents: [action.payload, ...state.incidents] };
+      break;
     case 'UPDATE_FEEDS':
-      return { ...state, feeds: action.payload };
+      newState = { ...state, feeds: action.payload };
+      break;
     default:
-      return state;
+      newState = state;
   }
+
+  // Persist to localStorage
+  if (newState !== state) {
+    saveToStorage('feeds', newState.feeds);
+    saveToStorage('employees', newState.employees);
+    saveToStorage('models', newState.models);
+  }
+
+  return newState;
 };
 
 interface AppContextType {

@@ -3,37 +3,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Camera, Upload, AlertTriangle, Settings } from 'lucide-react';
-
-interface CameraFeed {
-  id: string;
-  name: string;
-  cameraId: string;
-  status: 'active' | 'offline' | 'alert';
-  hasVideo: boolean;
-}
+import { useAppStore } from '@/store/appStore';
 
 interface CameraFeedGridProps {
   onEnrollEmployee: (feedId: string) => void;
 }
 
 const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
-  // No dummy cameras - only show uploaded feeds
-  const [cameras] = useState<CameraFeed[]>([]);
+  const { state } = useAppStore();
 
-  const getStatusColor = (status: CameraFeed['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'success';
-      case 'offline': return 'secondary';
-      case 'alert': return 'destructive';
+      case 'inactive': return 'secondary';
+      case 'error': return 'destructive';
       default: return 'secondary';
     }
   };
 
-  const getStatusIcon = (status: CameraFeed['status']) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active': return null;
-      case 'offline': return 'Offline';
-      case 'alert': return <AlertTriangle className="h-3 w-3" />;
+      case 'inactive': return 'Offline';
+      case 'error': return <AlertTriangle className="h-3 w-3" />;
       default: return null;
     }
   };
@@ -51,7 +43,7 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
       </CardHeader>
       
       <CardContent>
-        {cameras.length === 0 ? (
+        {state.feeds.length === 0 ? (
           <div className="text-center py-12">
             <div className="bg-muted/20 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
               <Camera className="h-8 w-8 text-muted-foreground" />
@@ -67,29 +59,44 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {cameras.map((camera) => (
-            <Card key={camera.id} className="border bg-white">
+            {state.feeds.map((feed) => (
+            <Card key={feed.id} className="border bg-white">
               <CardHeader className="pb-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center space-x-2">
                     <Camera className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-sm">{camera.name}</span>
+                    <span className="font-medium text-sm">{feed.name}</span>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span className="text-xs text-muted-foreground">ID: {camera.cameraId}</span>
-                    <Badge variant={getStatusColor(camera.status) as any} className="text-xs w-fit">
-                      {camera.status === 'active' ? 'Active' : camera.status === 'offline' ? 'Offline' : 'Alert'}
+                    <span className="text-xs text-muted-foreground">ID: {feed.id}</span>
+                    <Badge variant={getStatusColor(feed.status) as any} className="text-xs w-fit">
+                      {feed.status === 'active' ? 'Active' : feed.status === 'inactive' ? 'Inactive' : 'Error'}
                     </Badge>
-                    {camera.status === 'alert' && <AlertTriangle className="h-3 w-3 text-destructive" />}
+                    {feed.status === 'error' && <AlertTriangle className="h-3 w-3 text-destructive" />}
                   </div>
                 </div>
               </CardHeader>
               
               <CardContent>
-                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                  {camera.hasVideo ? (
-                    <div className="text-muted-foreground">Video Feed Active</div>
+                <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+                  {feed.lastFrame ? (
+                    feed.lastFrame.startsWith('blob:') ? (
+                      <video
+                        src={feed.lastFrame}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img 
+                        src={feed.lastFrame} 
+                        alt={`${feed.name} feed`}
+                        className="w-full h-full object-cover"
+                      />
+                    )
                   ) : (
                     <div className="text-center">
                       <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
@@ -102,10 +109,10 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
                   variant="default" 
                   size="sm" 
                   className="w-full"
-                  onClick={() => onEnrollEmployee(camera.id)}
+                  onClick={() => onEnrollEmployee(feed.id)}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Video
+                  {feed.lastFrame ? 'Enroll Employee' : 'Upload Video'}
                 </Button>
               </CardContent>
             </Card>

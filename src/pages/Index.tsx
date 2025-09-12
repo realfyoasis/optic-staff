@@ -25,12 +25,21 @@ const Index = () => {
   });
 
   const handleEnrollEmployee = (feedId: string) => {
-    const targetFeed = state.feeds.find(f => f.id === feedId);
-    setEnrollmentModal({
-      isOpen: true,
-      feedId,
-      feedImage: targetFeed?.lastFrame || '',
-    });
+    if (feedId === 'upload') {
+      // Open video upload modal first
+      setEnrollmentModal({
+        isOpen: true,
+        feedId: 'upload',
+        feedImage: '',
+      });
+    } else {
+      const targetFeed = state.feeds.find(f => f.id === feedId);
+      setEnrollmentModal({
+        isOpen: true,
+        feedId,
+        feedImage: targetFeed?.lastFrame || '',
+      });
+    }
   };
 
   const handleModelUpload = (model: YoloModel) => {
