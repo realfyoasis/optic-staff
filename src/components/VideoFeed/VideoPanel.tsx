@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,9 @@ import {
   Maximize2, 
   Users,
   Wifi,
-  WifiOff 
+  WifiOff,
+  Play,
+  Pause
 } from 'lucide-react';
 
 interface VideoPanelProps {
@@ -20,6 +22,8 @@ interface VideoPanelProps {
 
 const VideoPanel = ({ feed, onEnrollEmployee }: VideoPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const getStatusColor = (status: VideoFeed['status']) => {
     switch (status) {
@@ -40,11 +44,22 @@ const VideoPanel = ({ feed, onEnrollEmployee }: VideoPanelProps) => {
     }
   };
 
+  const togglePlayPause = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   const renderOverlays = () => {
     if (!feed.lastFrame) return null;
 
     return (
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         {/* Employee Detection Boxes */}
         {feed.employees.map((employee, index) => (
           <div
@@ -113,43 +128,88 @@ const VideoPanel = ({ feed, onEnrollEmployee }: VideoPanelProps) => {
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="relative aspect-video bg-muted overflow-hidden">
+        {/* Video Content */}
+        <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden">
           {feed.lastFrame ? (
             <>
-              <img 
-                src={feed.lastFrame} 
-                alt={`${feed.name} feed`}
-                className="w-full h-full object-cover"
-              />
-              {renderOverlays()}
+              {/* Check if it's a video URL (from uploaded file) */}
+              {feed.lastFrame.startsWith('blob:') ? (
+                <video
+                  ref={videoRef}
+                  src={feed.lastFrame}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onLoadedData={() => setIsPlaying(true)}
+                />
+              ) : (
+                <img 
+                  src={feed.lastFrame} 
+                  alt={`${feed.name} feed`}
+                  className="w-full h-full object-cover"
+                />
+              )}
               
               {/* Live indicator */}
-              {feed.status === 'active' && (
-                <div className="absolute top-2 right-2 flex items-center space-x-1 bg-destructive/90 text-destructive-foreground text-xs px-2 py-1 rounded">
-                  <div className="w-2 h-2 bg-destructive-foreground rounded-full animate-pulse-glow" />
-                  <span>LIVE</span>
+              <div className="absolute top-2 left-2">
+                <Badge 
+                  variant={feed.status === 'active' ? 'default' : 'secondary'}
+                  className={`${feed.status === 'active' ? 'bg-red-600 animate-pulse' : ''} text-white`}
+                >
+                  <div className="w-2 h-2 rounded-full bg-white mr-1" />
+                  {feed.status === 'active' ? 'LIVE' : 'OFFLINE'}
+                </Badge>
+              </div>
+
+              {/* Play/Pause control for videos */}
+              {feed.lastFrame.startsWith('blob:') && (
+                <div className="absolute top-2 right-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={togglePlayPause}
+                    className="bg-black/50 hover:bg-black/70 text-white pointer-events-auto"
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
                 </div>
               )}
 
+              {/* Detection overlays */}
+              {renderOverlays()}
+
               {/* Stats overlay */}
-              <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm text-foreground text-xs px-2 py-1 rounded">
-                <div className="flex items-center space-x-3">
-                  <span className="flex items-center">
-                    <Users className="h-3 w-3 mr-1" />
+              <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                <div className="flex items-center space-x-3 text-white text-xs">
+                  <div className="flex items-center">
+                    <Users className="w-3 h-3 mr-1" />
                     {feed.employees.length}
-                  </span>
+                  </div>
                   {feed.incidents.length > 0 && (
-                    <span className="flex items-center text-destructive">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
                       {feed.incidents.length}
-                    </span>
+                    </div>
                   )}
+                </div>
+                
+                {/* Status indicator */}
+                <div className="flex items-center space-x-1">
+                  {feed.status === 'active' ? 
+                    <Wifi className="w-3 h-3 text-green-400" /> : 
+                    <WifiOff className="w-3 h-3 text-red-400" />
+                  }
                 </div>
               </div>
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
-              <Camera className="h-8 w-8 text-muted-foreground" />
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Camera className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No video feed</p>
+              </div>
             </div>
           )}
         </div>

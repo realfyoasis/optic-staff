@@ -2,22 +2,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { useAppStore } from '@/store/appStore';
 import { 
-  Clock, 
-  MapPin, 
-  Phone, 
-  Mail, 
+  User,
+  Clock,
+  MapPin,
+  Phone,
+  Mail,
   Eye,
   Edit3,
   ExternalLink
 } from 'lucide-react';
 
 const EmployeeOverview = () => {
-  const { employees } = useEmployeeData();
+  const { state } = useAppStore();
   
   // Show only enrolled employees (first 3 for overview)
-  const displayEmployees = employees.slice(0, 3);
+  const displayEmployees = state.employees.slice(0, 3);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -67,95 +68,105 @@ const EmployeeOverview = () => {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {displayEmployees.length === 0 ? (
+        {state.employees.length === 0 ? (
           <div className="text-center py-8">
-            <div className="bg-muted/20 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <span className="text-2xl">👥</span>
-            </div>
+            <User className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="text-lg font-semibold mb-2">No Enrolled Employees</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Start by uploading a video feed, then enroll employees for facial recognition tracking.
+            <p className="text-muted-foreground">
+              Enroll employees through video feeds to see them here
             </p>
           </div>
         ) : (
-          displayEmployees.map((employee) => (
-          <Card key={employee.id} className="border bg-white">
-            <CardContent className="p-4">
-              <div className="flex items-start space-x-3">
-                {/* Avatar */}
-                <Avatar className="h-12 w-12 flex-shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                    {getEmployeeInitials(employee.name)}
-                  </AvatarFallback>
-                </Avatar>
-                
-                {/* Employee Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold text-sm text-foreground">{employee.name}</h3>
-                      <p className="text-xs text-muted-foreground">{employee.role}</p>
-                      <p className="text-xs text-muted-foreground">ID: {employee.id}</p>
-                    </div>
-                    <Badge variant={getStatusColor(employee.status) as any} className="text-xs">
-                      {employee.status === 'online' ? 'Active' : employee.status}
-                    </Badge>
-                  </div>
-                  
-                  {/* Location and Duration */}
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center text-muted-foreground">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        <span>Location:</span>
-                      </div>
-                      <span className="font-medium">
-                        {employee.status === 'offline' ? 'Offline' : employee.currentLocation}
-                      </span>
-                    </div>
+          <>
+            {displayEmployees.map((employee) => (
+              <Card key={employee.id} className="border bg-white">
+                <CardContent className="p-4">
+                  <div className="flex items-start space-x-3">
+                    {/* Avatar */}
+                    <Avatar className="h-12 w-12 flex-shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                        {getEmployeeInitials(employee.name)}
+                      </AvatarFallback>
+                    </Avatar>
                     
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center text-muted-foreground">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span>Duration:</span>
+                    {/* Employee Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="font-semibold text-sm text-foreground">{employee.name}</h3>
+                          <p className="text-xs text-muted-foreground">{employee.role}</p>
+                          <p className="text-xs text-muted-foreground">ID: {employee.id}</p>
+                        </div>
+                        <Badge variant={getStatusColor(employee.status) as any} className="text-xs">
+                          {employee.status === 'online' ? 'Active' : employee.status}
+                        </Badge>
                       </div>
-                      <span className="font-medium">{formatDuration(employee.status)}</span>
+                      
+                      {/* Location and Duration */}
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center text-muted-foreground">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            <span>Location:</span>
+                          </div>
+                          <span className="font-medium">
+                            {employee.status === 'offline' ? 'Offline' : employee.currentLocation}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center text-muted-foreground">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>Duration:</span>
+                          </div>
+                          <span className="font-medium">{formatDuration(employee.status)}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Contact Info */}
+                      <div className="space-y-1 mb-3 text-xs">
+                        <div className="flex items-center text-muted-foreground">
+                          <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span>Contact: +1-555-0123</span>
+                        </div>
+                        <div className="flex items-center text-muted-foreground">
+                          <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">Email: {employee.contact}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Last Seen */}
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Last seen: {formatLastSeen(employee.lastSeen, employee.status)}
+                      </p>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" className="text-xs h-7">
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7">
+                          <Edit3 className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Contact Info */}
-                  <div className="space-y-1 mb-3 text-xs">
-                    <div className="flex items-center text-muted-foreground">
-                      <Phone className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span>Contact: +1-555-0123</span>
-                    </div>
-                    <div className="flex items-center text-muted-foreground">
-                      <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">Email: {employee.contact}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Last Seen */}
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Last seen: {formatLastSeen(employee.lastSeen, employee.status)}
-                  </p>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="text-xs h-7">
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-xs h-7">
-                      <Edit3 className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {state.employees.length > 3 && (
+              <div className="text-center pt-4">
+                <Button variant="outline" size="sm">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View All {state.employees.length} Employees
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-          ))
+            )}
+          </>
         )}
       </CardContent>
     </Card>
