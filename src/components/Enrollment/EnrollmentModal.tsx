@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +44,27 @@ const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModal
     role: '',
     contact: '',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const [isSubmitting, setIsSubmitting] = useState(false);
+  // Video frame capture support
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [frameImage, setFrameImage] = useState<string | null>(null);
+  const isVideoSource = !!feedImage && (feedImage.startsWith('blob:') || /(mp4|webm|ogg|mov)$/i.test(feedImage));
+
+  const grabFrame = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = canvasRef.current || document.createElement('canvas');
+    const width = video.videoWidth || 640;
+    const height = video.videoHeight || 360;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL('image/png');
+    setFrameImage(dataUrl);
+  };
 
   const handleFaceCapture = (faceCrop: string, boundingBox: { x: number; y: number; width: number; height: number }) => {
     setEnrollmentData(prev => ({
@@ -114,6 +134,7 @@ const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModal
       role: '',
       contact: '',
     });
+    setFrameImage(null);
     setIsSubmitting(false);
     onClose();
   };
@@ -131,11 +152,50 @@ const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModal
               </p>
             </div>
             
-            {feedImage && (
+            {isVideoSource ? (
+              frameImage ? (
+                <>
+                  <EnrollmentCanvas 
+                    imageUrl={frameImage}
+                    onFaceCapture={handleFaceCapture}
+                  />
+                  <div className="flex justify-end">
+                    <Button variant="outline" onClick={() => setFrameImage(null)}>
+                      Retake Frame
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <video
+                    ref={videoRef}
+                    src={feedImage}
+                    className="w-full rounded-lg border"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                  />
+                  <div className="flex justify-end mt-3">
+                    <Button onClick={grabFrame} className="bg-primary hover:bg-primary/90">
+                      Capture Frame
+                    </Button>
+                  </div>
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+              )
+            ) : feedImage ? (
               <EnrollmentCanvas 
                 imageUrl={feedImage}
                 onFaceCapture={handleFaceCapture}
               />
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">No feed image available. Please try again from a camera feed.</p>
+                </CardContent>
+              </Card>
             )}
           </div>
         );
