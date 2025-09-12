@@ -16,7 +16,7 @@ import {
 const EmployeeOverview = () => {
   const { employees } = useEmployeeData();
   
-  // Show only first 3 employees for overview
+  // Show only enrolled employees (first 3 for overview)
   const displayEmployees = employees.slice(0, 3);
 
   const getStatusColor = (status: string) => {
@@ -67,7 +67,18 @@ const EmployeeOverview = () => {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {displayEmployees.map((employee) => (
+        {displayEmployees.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="bg-muted/20 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <span className="text-2xl">👥</span>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No Enrolled Employees</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Start by uploading a video feed, then enroll employees for facial recognition tracking.
+            </p>
+          </div>
+        ) : (
+          displayEmployees.map((employee) => (
           <Card key={employee.id} className="border bg-white">
             <CardContent className="p-4">
               <div className="flex items-start space-x-3">
@@ -144,7 +155,8 @@ const EmployeeOverview = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );

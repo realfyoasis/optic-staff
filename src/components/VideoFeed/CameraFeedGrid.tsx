@@ -17,12 +17,8 @@ interface CameraFeedGridProps {
 }
 
 const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
-  const [cameras] = useState<CameraFeed[]>([
-    { id: 'cam001', name: 'Entrance', cameraId: 'CAM001', status: 'active', hasVideo: false },
-    { id: 'cam002', name: 'Lobby', cameraId: 'CAM002', status: 'active', hasVideo: false },
-    { id: 'cam003', name: 'Office Floor 1', cameraId: 'CAM003', status: 'active', hasVideo: false },
-    { id: 'cam004', name: 'Parking', cameraId: 'CAM004', status: 'offline', hasVideo: false },
-  ]);
+  // No dummy cameras - only show uploaded feeds
+  const [cameras] = useState<CameraFeed[]>([]);
 
   const getStatusColor = (status: CameraFeed['status']) => {
     switch (status) {
@@ -45,29 +41,44 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
   return (
     <Card className="bg-card shadow-sm">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle className="text-lg font-semibold">Camera Feeds</CardTitle>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => onEnrollEmployee('upload')}>
             <Settings className="h-4 w-4 mr-2" />
-            Manage Cameras
+            Upload Video
           </Button>
         </div>
       </CardHeader>
       
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {cameras.map((camera) => (
+        {cameras.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="bg-muted/20 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Camera className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No Camera Feeds</h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              Upload camera videos to start monitoring employees with facial recognition.
+            </p>
+            <Button onClick={() => onEnrollEmployee('upload')} className="bg-primary hover:bg-primary/90">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload First Video
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {cameras.map((camera) => (
             <Card key={camera.id} className="border bg-white">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center space-x-2">
                     <Camera className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{camera.name}</span>
+                    <span className="font-medium text-sm">{camera.name}</span>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-xs text-muted-foreground">ID: {camera.cameraId}</span>
-                    <Badge variant={getStatusColor(camera.status) as any} className="text-xs">
+                    <Badge variant={getStatusColor(camera.status) as any} className="text-xs w-fit">
                       {camera.status === 'active' ? 'Active' : camera.status === 'offline' ? 'Offline' : 'Alert'}
                     </Badge>
                     {camera.status === 'alert' && <AlertTriangle className="h-3 w-3 text-destructive" />}
@@ -98,8 +109,9 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
                 </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

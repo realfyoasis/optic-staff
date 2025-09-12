@@ -1,79 +1,28 @@
 import { useState, useEffect } from 'react';
 import VideoPanel from './VideoPanel';
+import VideoUploadModal from './VideoUploadModal';
 import { VideoFeed } from '@/types/employee';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload } from 'lucide-react';
-import feed1 from '@/assets/feed1.jpg';
-import feed2 from '@/assets/feed2.jpg';  
-import feed3 from '@/assets/feed3.jpg';
+import { Plus, Upload, VideoIcon } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-const mockFeeds: VideoFeed[] = [
-  {
-    id: 'cam001',
-    name: 'Office Floor 1',
-    status: 'active',
-    location: 'Main Office Area',
-    lastFrame: feed1,
-    incidents: [],
-    employees: [
-      {
-        employeeId: '001',
-        name: 'John Anderson',
-        confidence: 0.94,
-        bbox: { x: 120, y: 80, width: 80, height: 120 },
-        timestamp: new Date(),
-      }
-    ],
-  },
-  {
-    id: 'cam002',
-    name: 'Reception Area',
-    status: 'active',
-    location: 'Building Entrance',
-    lastFrame: feed2,
-    incidents: [
-      {
-        id: 'inc001',
-        type: 'unauthorized_access',
-        severity: 'medium',
-        timestamp: new Date(Date.now() - 300000),
-        location: 'Reception Area',
-        bbox: { x: 200, y: 60, width: 70, height: 110 },
-        description: 'Unrecognized person detected',
-      }
-    ],
-    employees: [],
-  },
-  {
-    id: 'cam003',
-    name: 'Hallway B',
-    status: 'active',
-    location: 'Corridor B Wing',
-    lastFrame: feed3,
-    incidents: [],
-    employees: [
-      {
-        employeeId: '003',
-        name: 'Michael Chen',
-        confidence: 0.87,
-        bbox: { x: 180, y: 90, width: 75, height: 115 },
-        timestamp: new Date(),
-      }
-    ],
-  },
-];
+// Start with empty feeds - only show uploaded videos
+const initialFeeds: VideoFeed[] = [];
 
 interface VideoGridProps {
   onEnrollEmployee: (feedId: string) => void;
 }
 
 const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
-  const [feeds, setFeeds] = useState<VideoFeed[]>(mockFeeds);
-  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+  const [feeds, setFeeds] = useState<VideoFeed[]>(initialFeeds);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  // Simulate real-time feed updates
+  // Simulate real-time feed updates for facial recognition
   useEffect(() => {
+    if (feeds.length === 0) return;
+
     const interval = setInterval(() => {
       setFeeds(prev => prev.map(feed => ({
         ...feed,
@@ -86,73 +35,88 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [feeds.length]);
 
-  const handleVideoUpload = () => {
-    setIsUploading(true);
+  const handleVideoUpload = (videoData: {
+    file: File;
+    name: string;
+    location: string;
+    description: string;
+  }) => {
+    // Create object URL for the uploaded video
+    const videoUrl = URL.createObjectURL(videoData.file);
     
-    // Simulate video upload process
-    setTimeout(() => {
-      const newFeed: VideoFeed = {
-        id: `cam${String(feeds.length + 1).padStart(3, '0')}`,
-        name: `Camera ${feeds.length + 1}`,
-        status: 'active',
-        location: `Location ${feeds.length + 1}`,
-        lastFrame: feed1, // Use a placeholder
-        incidents: [],
-        employees: [],
-      };
-      
-      setFeeds(prev => [...prev, newFeed]);
-      setIsUploading(false);
-    }, 2000);
+    const newFeed: VideoFeed = {
+      id: `cam${String(feeds.length + 1).padStart(3, '0')}`,
+      name: videoData.name,
+      status: 'active',
+      location: videoData.location,
+      lastFrame: videoUrl, // Use actual uploaded video
+      incidents: [],
+      employees: [],
+    };
+    
+    setFeeds(prev => [...prev, newFeed]);
+    
+    toast({
+      title: "Video Feed Added",
+      description: `${videoData.name} is now active and ready for facial recognition.`,
+    });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Live Video Feeds</h2>
+          <h2 className="text-2xl font-bold text-foreground">Camera Video Feeds</h2>
           <p className="text-muted-foreground">
-            {feeds.filter(f => f.status === 'active').length} of {feeds.length} cameras active
+            {feeds.length === 0 ? 'No feeds uploaded yet' : 
+             `${feeds.filter(f => f.status === 'active').length} of ${feeds.length} cameras active`}
           </p>
         </div>
         
         <Button 
-          onClick={handleVideoUpload} 
-          disabled={isUploading}
-          className="bg-primary hover:bg-primary/90"
+          onClick={() => setUploadModalOpen(true)}
+          className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
         >
-          {isUploading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Video
-            </>
-          )}
+          <Upload className="h-4 w-4 mr-2" />
+          Upload Video Feed
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {feeds.map((feed) => (
-          <VideoPanel
-            key={feed.id}
-            feed={feed}
-            onEnrollEmployee={() => onEnrollEmployee(feed.id)}
-          />
-        ))}
-        
-        {feeds.length < 6 && (
+      {feeds.length === 0 ? (
+        <Card className="bg-card border-2 border-dashed border-border/50">
+          <div className="p-12 text-center">
+            <VideoIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="text-lg font-semibold mb-2">No Video Feeds Available</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Upload your first camera video to start monitoring and tracking employees using facial recognition.
+            </p>
+            <Button 
+              onClick={() => setUploadModalOpen(true)}
+              size="lg"
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload First Video
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {feeds.map((feed) => (
+            <VideoPanel
+              key={feed.id}
+              feed={feed}
+              onEnrollEmployee={() => onEnrollEmployee(feed.id)}
+            />
+          ))}
+          
           <Card className="bg-card border border-dashed border-border hover:border-primary/50 transition-colors">
             <div className="aspect-video flex items-center justify-center">
               <Button
                 variant="ghost"
-                onClick={handleVideoUpload}
-                disabled={isUploading}
+                onClick={() => setUploadModalOpen(true)}
                 className="flex-col h-auto p-8 text-muted-foreground hover:text-foreground"
               >
                 <Plus className="h-8 w-8 mb-2" />
@@ -160,8 +124,15 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
               </Button>
             </div>
           </Card>
-        )}
-      </div>
+        </div>
+      )}
+      
+      {/* Video Upload Modal */}
+      <VideoUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onVideoUpload={handleVideoUpload}
+      />
     </div>
   );
 };

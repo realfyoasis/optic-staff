@@ -89,8 +89,10 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
 
     setIsUploading(true);
 
-    // Simulate upload process
-    setTimeout(() => {
+    try {
+      // Simulate realistic YOLO model processing
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       const newModel: YoloModel = {
         id: `model${String(uploadedModels.length + 1).padStart(3, '0')}`,
         name: modelName,
@@ -105,8 +107,8 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
       onModelUpload(newModel);
 
       toast({
-        title: "Model Uploaded Successfully",
-        description: `${modelName} has been uploaded and configured.`,
+        title: "YOLO Model Deployed Successfully",
+        description: `${modelName} is now running on ${selectedFeeds.length} camera feeds with real-time detection.`,
       });
 
       // Reset form
@@ -114,12 +116,19 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
       setModelName('');
       setModelType('person_detection');
       setSelectedFeeds([]);
-      setIsUploading(false);
       
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    }, 3000);
+    } catch (error) {
+      toast({
+        title: "Model Upload Failed",
+        description: "Failed to deploy YOLO model. Please check the file and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleToggleModel = (modelId: string) => {
@@ -170,9 +179,14 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
       {/* Upload New Model */}
       <Card className="bg-gradient-to-br from-card to-card/80">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <span>YOLO Model Management</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <span>YOLO Model Management</span>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              AI-Powered Detection
+            </Badge>
           </CardTitle>
         </CardHeader>
         
@@ -181,12 +195,13 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
             {/* Upload Form */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Model File</Label>
+                <Label className="text-sm font-medium">YOLO Model File</Label>
                 <div className="flex space-x-2">
                   <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-1"
+                    className="flex-1 justify-start"
+                    disabled={isUploading}
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Select .pt File
@@ -200,13 +215,16 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
                   />
                 </div>
                 {selectedFile && (
-                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                    <File className="h-4 w-4" />
-                    <span>{selectedFile.name}</span>
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
+                    <div className="flex items-center space-x-2">
+                      <File className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{selectedFile.name}</span>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedFile(null)}
+                      disabled={isUploading}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -215,18 +233,19 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="modelName">Model Name</Label>
+                <Label htmlFor="modelName" className="text-sm font-medium">Model Name</Label>
                 <Input
                   id="modelName"
                   value={modelName}
                   onChange={(e) => setModelName(e.target.value)}
-                  placeholder="Enter model name"
+                  placeholder="e.g., Advanced Person Detector v2"
+                  disabled={isUploading}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Model Type</Label>
-                <Select value={modelType} onValueChange={(value: any) => setModelType(value)}>
+                <Label className="text-sm font-medium">Detection Type</Label>
+                <Select value={modelType} onValueChange={(value: any) => setModelType(value)} disabled={isUploading}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -240,20 +259,27 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
 
             {/* Feed Selection */}
             <div className="space-y-4">
-              <Label>Apply to Feeds</Label>
-              <div className="space-y-3">
-                {availableFeeds.map((feed) => (
-                  <div key={feed.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={feed.id}
-                      checked={selectedFeeds.includes(feed.id)}
-                      onCheckedChange={() => handleFeedToggle(feed.id)}
-                    />
-                    <Label htmlFor={feed.id} className="text-sm font-normal">
-                      {feed.name}
-                    </Label>
+              <Label className="text-sm font-medium">Deploy to Camera Feeds</Label>
+              <div className="space-y-3 max-h-32 overflow-y-auto">
+                {availableFeeds.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    No camera feeds available. Upload videos first.
                   </div>
-                ))}
+                ) : (
+                  availableFeeds.map((feed) => (
+                    <div key={feed.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={feed.id}
+                        checked={selectedFeeds.includes(feed.id)}
+                        onCheckedChange={() => handleFeedToggle(feed.id)}
+                        disabled={isUploading}
+                      />
+                      <Label htmlFor={feed.id} className="text-sm font-normal">
+                        {feed.name}
+                      </Label>
+                    </div>
+                  ))
+                )}
               </div>
 
               <Button
@@ -264,12 +290,12 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
                 {isUploading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                    Uploading...
+                    Deploying Model...
                   </>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload Model
+                    Deploy YOLO Model
                   </>
                 )}
               </Button>
@@ -292,17 +318,17 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
               return (
                 <div
                   key={model.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-gradient-to-r from-background to-muted/20"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border bg-gradient-to-r from-background to-muted/20 gap-4"
                 >
                   <div className="flex items-center space-x-4">
-                    <div className={`p-2 rounded-full ${getModelTypeColor(model.type)}`}>
+                    <div className={`p-2 rounded-full ${getModelTypeColor(model.type)} flex-shrink-0`}>
                       <TypeIcon className="h-4 w-4" />
                     </div>
                     
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-semibold text-foreground">{model.name}</h4>
                       <p className="text-sm text-muted-foreground">{model.fileName}</p>
-                      <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs">
                           {model.type.replace('_', ' ')}
                         </Badge>
@@ -313,8 +339,8 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="text-left sm:text-right">
                       <div className="flex items-center space-x-2">
                         {model.isActive ? (
                           <CheckCircle className="h-4 w-4 text-success" />
@@ -358,7 +384,8 @@ const ModelUpload = ({ onModelUpload }: ModelUploadProps) => {
             {uploadedModels.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No models uploaded yet.</p>
+                <p>No YOLO models deployed yet.</p>
+                <p className="text-xs mt-1">Upload your first model to start AI-powered detection.</p>
               </div>
             )}
           </div>
