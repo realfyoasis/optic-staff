@@ -6,9 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, VideoIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Start with empty feeds - only show uploaded videos
-const initialFeeds: VideoFeed[] = [];
+import { useAppStore } from '@/store/appStore';
 
 interface VideoGridProps {
   onEnrollEmployee: (feedId: string) => void;
@@ -16,26 +14,8 @@ interface VideoGridProps {
 
 const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
   const { toast } = useToast();
-  const [feeds, setFeeds] = useState<VideoFeed[]>(initialFeeds);
+  const { state, addFeed } = useAppStore();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-
-  // Simulate real-time feed updates for facial recognition
-  useEffect(() => {
-    if (feeds.length === 0) return;
-
-    const interval = setInterval(() => {
-      setFeeds(prev => prev.map(feed => ({
-        ...feed,
-        employees: feed.employees.map(emp => ({
-          ...emp,
-          confidence: Math.max(0.5, emp.confidence + (Math.random() - 0.5) * 0.1),
-          timestamp: new Date(),
-        })),
-      })));
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [feeds.length]);
 
   const handleVideoUpload = (videoData: {
     file: File;
@@ -43,20 +23,20 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
     location: string;
     description: string;
   }) => {
-    // Create object URL for the uploaded video
+    // Create persistent object URL for the uploaded video
     const videoUrl = URL.createObjectURL(videoData.file);
     
     const newFeed: VideoFeed = {
-      id: `cam${String(feeds.length + 1).padStart(3, '0')}`,
+      id: `feed-${Date.now()}`,
       name: videoData.name,
       status: 'active',
       location: videoData.location,
-      lastFrame: videoUrl, // Use actual uploaded video
+      lastFrame: videoUrl,
       incidents: [],
       employees: [],
     };
     
-    setFeeds(prev => [...prev, newFeed]);
+    addFeed(newFeed);
     
     toast({
       title: "Video Feed Added",
@@ -70,8 +50,8 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
         <div>
           <h2 className="text-2xl font-bold text-foreground">Camera Video Feeds</h2>
           <p className="text-muted-foreground">
-            {feeds.length === 0 ? 'No feeds uploaded yet' : 
-             `${feeds.filter(f => f.status === 'active').length} of ${feeds.length} cameras active`}
+            {state.feeds.length === 0 ? 'No feeds uploaded yet' : 
+             `${state.feeds.filter(f => f.status === 'active').length} of ${state.feeds.length} cameras active`}
           </p>
         </div>
         
@@ -84,7 +64,7 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
         </Button>
       </div>
 
-      {feeds.length === 0 ? (
+      {state.feeds.length === 0 ? (
         <Card className="bg-card border-2 border-dashed border-border/50">
           <div className="p-12 text-center">
             <VideoIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
@@ -104,7 +84,7 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {feeds.map((feed) => (
+          {state.feeds.map((feed) => (
             <VideoPanel
               key={feed.id}
               feed={feed}

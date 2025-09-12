@@ -2,11 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* FaceFlow Tracker Design System - Blue Professional Theme */
-
+/* Custom Design Tokens */
 @layer base {
   :root {
-    /* Light theme base */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -16,70 +14,101 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Blue primary matching FaceFlow */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 217 91% 70%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 217.2 91.2% 59.8%;
 
-    /* Light secondary */
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
 
-    /* Alert colors */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    
-    --warning: 43 96% 56%;
-    --warning-foreground: 0 0% 9%;
-    
-    --success: 142 76% 36%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+
+    --success: 87 100% 37%;
     --success-foreground: 0 0% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 217 91% 60%;
+    --ring: 222.2 84% 4.9%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Custom design tokens */
-    --live-pulse: 142 76% 36%;
-    --incident-alert: 0 84% 60%;
-    --sidebar-bg: 217 91% 60%;
-    --sidebar-hover: 217 91% 55%;
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 70%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 40% 98%));
-    
-    /* Shadows */
-    --shadow-primary: 0 4px 20px hsl(217 91% 60% / 0.15);
-    --shadow-card: 0 2px 10px hsl(0 0% 0% / 0.1);
-    
-    /* Animations */
+    /* Gradient variables */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.3));
+
+    /* Shadow variables */
+    --shadow-elegant: 0 10px 30px -10px hsl(var(--primary) / 0.15);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.2);
+
+    /* Animation variables */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --pulse-duration: 2s;
 
+    /* Incident alert colors */
+    --incident-low: 59 90% 50%;
+    --incident-medium: 38 92% 50%;
+    --incident-high: 0 84% 60%;
+    --incident-critical: 0 71% 51%;
+
+    /* Sidebar theme */
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Live pulse animation color */
+    --live-pulse: 22 163 74;
+  }
+
+  /* Theme variations */
+  [data-theme="forest"] {
+    --primary: 142 71% 45%;
+    --primary-glow: 158 64% 52%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 120 60% 50%;
+  }
+
+  [data-theme="ocean"] {
+    --primary: 200 88% 48%;
+    --primary-glow: 217 91% 60%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 190 80% 55%;
+  }
+
+  [data-theme="sunset"] {
+    --primary: 31 100% 60%;
+    --primary-glow: 340 82% 62%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 25 90% 65%;
+  }
+
+  [data-theme="purple"] {
+    --primary: 271 81% 56%;
+    --primary-glow: 291 64% 42%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 280 70% 60%;
+  }
+
+  [data-theme="monochrome"] {
+    --primary: 0 0% 20%;
+    --primary-glow: 0 0% 40%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 0 0% 35%;
   }
 
   .dark {

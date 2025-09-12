@@ -6,23 +6,16 @@ import VideoGrid from '@/components/VideoFeed/VideoGrid';
 import ActivityLog from '@/components/Activity/ActivityLog';
 import ModelUpload from '@/components/Model/ModelUpload';
 import EnrollmentModal from '@/components/Enrollment/EnrollmentModal';
-import { useEmployeeData } from '@/hooks/useEmployeeData';
+import ThemeSettings from '@/components/Settings/ThemeSettings';
+import { useAppStore } from '@/store/appStore';
 import { YoloModel } from '@/types/employee';
 import { useToast } from '@/hooks/use-toast';
-import feed1 from '@/assets/feed1.jpg';
 
 const Index = () => {
   const { toast } = useToast();
-  const {
-    employees,
-    incidents,
-    activityLogs,
-    searchTerm,
-    setSearchTerm,
-    totalEmployees,
-    onlineEmployees,
-    offlineEmployees,
-  } = useEmployeeData();
+  const { state, addEmployee, addModel, getStats } = useAppStore();
+
+  const stats = getStats();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [enrollmentModal, setEnrollmentModal] = useState({
@@ -32,15 +25,16 @@ const Index = () => {
   });
 
   const handleEnrollEmployee = (feedId: string) => {
-    // In a real app, this would get the current frame from the feed
+    const targetFeed = state.feeds.find(f => f.id === feedId);
     setEnrollmentModal({
       isOpen: true,
       feedId,
-      feedImage: feed1, // Use mock image for demo
+      feedImage: targetFeed?.lastFrame || '',
     });
   };
 
   const handleModelUpload = (model: YoloModel) => {
+    addModel(model);
     toast({
       title: "Model Configuration Updated",
       description: `${model.name} has been applied to ${model.appliedFeeds.length} feeds.`,
@@ -52,12 +46,12 @@ const Index = () => {
       case 'dashboard':
         return (
           <MainDashboard
-            totalEmployees={totalEmployees}
-            onlineEmployees={onlineEmployees}
-            offlineEmployees={offlineEmployees}
-            totalIncidents={incidents.length}
-            activeFeeds={3}
-            totalFeeds={4}
+            totalEmployees={stats.totalEmployees}
+            onlineEmployees={stats.onlineEmployees}
+            offlineEmployees={stats.offlineEmployees}
+            totalIncidents={stats.totalIncidents}
+            activeFeeds={stats.activeFeeds}
+            totalFeeds={stats.totalFeeds}
             onEnrollEmployee={handleEnrollEmployee}
           />
         );
@@ -65,9 +59,9 @@ const Index = () => {
         return (
           <div className="p-6">
             <EmployeeTable
-              employees={employees}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
+              employees={state.employees}
+              searchTerm=""
+              onSearchChange={() => {}}
             />
           </div>
         );
@@ -94,7 +88,7 @@ const Index = () => {
             <div className="text-center py-12">
               <h2 className="text-2xl font-bold mb-4">Incident Management</h2>
               <p className="text-muted-foreground">
-                {incidents.length} active incident{incidents.length !== 1 ? 's' : ''}
+                {state.incidents.length} active incident{state.incidents.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -109,32 +103,27 @@ const Index = () => {
         return (
           <div className="p-6">
             <EmployeeTable
-              employees={employees}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
+              employees={state.employees}
+              searchTerm=""
+              onSearchChange={() => {}}
             />
           </div>
         );
       case 'settings':
         return (
           <div className="p-6">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold mb-4">Settings</h2>
-              <p className="text-muted-foreground">
-                System configuration and preferences
-              </p>
-            </div>
+            <ThemeSettings />
           </div>
         );
       default:
         return (
           <MainDashboard
-            totalEmployees={totalEmployees}
-            onlineEmployees={onlineEmployees}
-            offlineEmployees={offlineEmployees}
-            totalIncidents={incidents.length}
-            activeFeeds={3}
-            totalFeeds={4}
+            totalEmployees={stats.totalEmployees}
+            onlineEmployees={stats.onlineEmployees}
+            offlineEmployees={stats.offlineEmployees}
+            totalIncidents={stats.totalIncidents}
+            activeFeeds={stats.activeFeeds}
+            totalFeeds={stats.totalFeeds}
             onEnrollEmployee={handleEnrollEmployee}
           />
         );
