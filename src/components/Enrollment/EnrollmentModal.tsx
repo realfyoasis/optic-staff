@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,14 +57,15 @@ const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModal
   const [showVideoUpload, setShowVideoUpload] = useState(false);
   const isVideoSource = !!currentFeedImage && (currentFeedImage.startsWith('blob:') || /(mp4|webm|ogg|mov)$/i.test(currentFeedImage));
 
-  // Set initial step based on feedId
-  useState(() => {
+  // Set step when modal opens or feed changes
+  useEffect(() => {
+    if (!isOpen) return;
     if (feedId === 'upload' && !currentFeedImage) {
       setStep('upload');
     } else {
       setStep('capture');
     }
-  });
+  }, [isOpen, feedId, currentFeedImage]);
 
   const grabFrame = () => {
     const video = videoRef.current;
@@ -469,7 +470,7 @@ const EnrollmentModal = ({ isOpen, onClose, feedId, feedImage }: EnrollmentModal
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <User className="h-5 w-5 text-primary" />

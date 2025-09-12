@@ -26,36 +26,48 @@ const EnrollmentCanvas = ({ imageUrl, onFaceCapture }: EnrollmentCanvasProps) =>
 
   // Load and draw the image
   useEffect(() => {
+    setImageLoaded(false);
     const image = new Image();
     image.crossOrigin = 'anonymous';
     image.onload = () => {
-      if (imageRef.current && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        // Calculate canvas dimensions to maintain aspect ratio
-        const maxWidth = 600;
-        const maxHeight = 400;
-        const aspectRatio = image.width / image.height;
-        
-        let newWidth = maxWidth;
-        let newHeight = maxWidth / aspectRatio;
-        
-        if (newHeight > maxHeight) {
-          newHeight = maxHeight;
-          newWidth = maxHeight * aspectRatio;
-        }
-
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        setCanvasSize({ width: newWidth, height: newHeight });
-        
-        // Draw the image
-        ctx.drawImage(image, 0, 0, newWidth, newHeight);
-        setImageLoaded(true);
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        imageRef.current = image;
+        return;
       }
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        imageRef.current = image;
+        return;
+      }
+
+      // Calculate canvas dimensions to maintain aspect ratio
+      const maxWidth = 600;
+      const maxHeight = 400;
+      const aspectRatio = image.width / image.height;
+      
+      let newWidth = maxWidth;
+      let newHeight = maxWidth / aspectRatio;
+      
+      if (newHeight > maxHeight) {
+        newHeight = maxHeight;
+        newWidth = maxHeight * aspectRatio;
+      }
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      setCanvasSize({ width: newWidth, height: newHeight });
+      
+      // Draw the image
+      ctx.drawImage(image, 0, 0, newWidth, newHeight);
+
       imageRef.current = image;
+      setImageLoaded(true);
+    };
+    image.onerror = () => {
+      console.error('Failed to load image for EnrollmentCanvas');
+      imageRef.current = image;
+      setImageLoaded(true);
     };
     image.src = imageUrl;
   }, [imageUrl]);
