@@ -44,15 +44,12 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
         // Don't return; we'll proceed and use fallback in detection step
       }
 
-      try {
-        await faceEmbeddingGenerator.initialize();
-        console.log('Embedding generator initialized successfully');
-      } catch (embeddingError) {
-        console.error('Embedding generator initialization failed:', embeddingError);
-        // Continue with face detection but without embeddings
-      }
+      // Kick off embedding generator in background (do not block detection)
+      faceEmbeddingGenerator.initialize()
+        .then(() => console.log('Embedding generator initialized successfully'))
+        .catch((embeddingError) => console.warn('Embedding generator initialization failed (continuing without embeddings):', embeddingError));
       
-      // Load and process image
+      // Load and process image (runs immediately)
       await loadAndDetectFaces();
     } catch (error) {
       console.error('Failed to initialize face detection:', error);

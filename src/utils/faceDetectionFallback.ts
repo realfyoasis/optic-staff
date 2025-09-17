@@ -1,5 +1,6 @@
 import * as blazeface from '@tensorflow-models/blazeface';
 import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 import * as tf from '@tensorflow/tfjs-core';
 import type { DetectedFace } from './faceDetection';
 
@@ -10,12 +11,21 @@ export class TFJSFaceDetector {
   async initialize() {
     if (this.initialized) return;
     try {
-      // Prefer WebGL backend for speed
-      const backends = tf.getBackend();
-      if (backends !== 'webgl') {
-        await tf.setBackend('webgl');
+      // Prefer WebGL backend for speed, fallback to CPU if not available
+      try {
+        if (tf.getBackend() !== 'webgl') {
+          await tf.setBackend('webgl');
+        }
+        await tf.ready();
+        console.log('[TFJS] Using WebGL backend');
+      } catch (e) {
+        console.warn('[TFJS] WebGL backend unavailable, falling back to CPU', e);
+        if (tf.getBackend() !== 'cpu') {
+          await tf.setBackend('cpu');
+        }
+        await tf.ready();
+        console.log('[TFJS] Using CPU backend');
       }
-      await tf.ready();
 
       this.model = await blazeface.load();
       this.initialized = true;
