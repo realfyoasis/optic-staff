@@ -1,72 +1,78 @@
-import * as blazeface from '@tensorflow-models/blazeface';
-import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs-backend-cpu';
-import * as tf from '@tensorflow/tfjs-core';
+import * as faceDetection from '@tensorflow-models/face-detection';
+import '@mediapipe/face_detection';
 import type { DetectedFace } from './faceDetection';
 
 export class TFJSFaceDetector {
-  private model: blazeface.BlazeFaceModel | null = null;
+  private detector: faceDetection.FaceDetector | null = null;
   private initialized = false;
 
   async initialize() {
     if (this.initialized) return;
     try {
-      // Prefer WebGL backend for speed, fallback to CPU if not available
-      try {
-        if (tf.getBackend() !== 'webgl') {
-          await tf.setBackend('webgl');
-        }
-        await tf.ready();
-        console.log('[TFJS] Using WebGL backend');
-      } catch (e) {
-        console.warn('[TFJS] WebGL backend unavailable, falling back to CPU', e);
-        if (tf.getBackend() !== 'cpu') {
-          await tf.setBackend('cpu');
-        }
-        await tf.ready();
-        console.log('[TFJS] Using CPU backend');
-      }
+      const model = faceDetection.SupportedModels.MediaPipeFaceDetector;
+      // Use the pure MediaPipe runtime (fast, no TFJS backend required)
+      const options = {
+        runtime: 'mediapipe',
+        // Load solution files from CDN (works in build environments too)
+        solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
+      } as any;
 
-      this.model = await blazeface.load();
+      this.detector = await faceDetection.createDetector(model, options);
       this.initialized = true;
-      console.log('[TFJS] BlazeFace model initialized');
+      console.log('[MP] MediaPipe FaceDetector initialized');
     } catch (e) {
-      console.error('[TFJS] Failed to initialize BlazeFace model', e);
+      console.error('[MP] Failed to initialize MediaPipe FaceDetector', e);
       throw e;
     }
   }
 
   async detectFromCanvas(canvas: HTMLCanvasElement): Promise<DetectedFace[]> {
-    if (!this.model) throw new Error('TFJS BlazeFace model not initialized');
+    if (!this.detector) throw new Error('MediaPipe FaceDetector not initialized');
 
     try {
-      const predictions = await this.model.estimateFaces(canvas, false);
-      
-      return predictions.map((prediction) => {
-        // Extract coordinates from tensors
-        const topLeft = Array.isArray(prediction.topLeft) ? 
-          prediction.topLeft : 
-          Array.from(prediction.topLeft.dataSync());
-        const bottomRight = Array.isArray(prediction.bottomRight) ? 
-          prediction.bottomRight : 
-          Array.from(prediction.bottomRight.dataSync());
+      const predictions = await this.detector.estimateFaces(canvas as HTMLCanvasElement);
 
-        const x = topLeft[0];
-        const y = topLeft[1];
-        const width = bottomRight[0] - topLeft[0];
-        const height = bottomRight[1] - topLeft[1];
+      return predictions.map((p: any) => {
+        // Robustly extract bounding box from different shapes
+        let x = 0, y = 0, width = 0, height = 0;
 
-        // Extract landmarks if available
+        if (p.box) {
+          const b = p.box;
+          const xMin = b.xMin ?? b.left ?? b.x ?? 0;
+          const yMin = b.yMin ?? b.top ?? b.y ?? 0;
+          const xMax = b.xMax ?? (b.width != null ? xMin + b.width : undefined);
+          const yMax = b.yMax ?? (b.height != null ? yMin + b.height : undefined);
+          x = xMin;
+          y = yMin;
+          width = (b.width != null ? b.width : (xMax != null ? xMax - xMin : 0));
+          height = (b.height != null ? b.height : (yMax != null ? yMax - yMin : 0));
+        } else if (p.boundingBox) {
+          const tl = Array.isArray(p.boundingBox.topLeft)
+            ? p.boundingBox.topLeft
+            : Array.from(p.boundingBox.topLeft?.dataSync?.() ?? p.boundingBox.topLeft ?? [0, 0]);
+          const br = Array.isArray(p.boundingBox.bottomRight)
+            ? p.boundingBox.bottomRight
+            : Array.from(p.boundingBox.bottomRight?.dataSync?.() ?? p.boundingBox.bottomRight ?? [0, 0]);
+          x = tl[0];
+          y = tl[1];
+          width = br[0] - tl[0];
+          height = br[1] - tl[1];
+        } else if (p.topLeft && p.bottomRight) {
+          const tl = Array.isArray(p.topLeft) ? p.topLeft : Array.from(p.topLeft.dataSync());
+          const br = Array.isArray(p.bottomRight) ? p.bottomRight : Array.from(p.bottomRight.dataSync());
+          x = tl[0];
+          y = tl[1];
+          width = br[0] - tl[0];
+          height = br[1] - tl[1];
+        }
+
+        const score = Array.isArray(p.score) ? p.score[0] : p.score;
+        const confidence = typeof score === 'number' ? score : (p.probability ?? 0.9);
+
         const landmarks: number[][] = [];
-        if (prediction.landmarks) {
-          if (Array.isArray(prediction.landmarks)) {
-            landmarks.push(...prediction.landmarks.map((landmark: number[]) => [landmark[0], landmark[1]]));
-          } else {
-            // Handle tensor case
-            const landmarkData = Array.from(prediction.landmarks.dataSync());
-            for (let i = 0; i < landmarkData.length; i += 2) {
-              landmarks.push([landmarkData[i], landmarkData[i + 1]]);
-            }
+        if (Array.isArray(p.keypoints)) {
+          for (const kp of p.keypoints) {
+            if (kp && kp.x != null && kp.y != null) landmarks.push([kp.x, kp.y]);
           }
         }
 
@@ -75,12 +81,12 @@ export class TFJSFaceDetector {
           y,
           width,
           height,
-          confidence: prediction.probability || 0.9,
+          confidence,
           landmarks,
         } as DetectedFace;
       });
     } catch (e) {
-      console.error('[TFJS] BlazeFace detection failed', e);
+      console.error('[MP] MediaPipe detection failed', e);
       return [];
     }
   }

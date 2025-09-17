@@ -174,7 +174,7 @@ export class FaceDetector {
           try {
             await tfjsFaceDetector.initialize();
             faces = await tfjsFaceDetector.detectFromCanvas(canvasEl);
-            console.log(`[BlazeFace] Detected ${faces.length} faces as fallback`);
+            console.log(`[MediaPipe] Detected ${faces.length} faces as fallback`);
           } catch (e) {
             console.error('TFJS BlazeFace fallback detection failed:', e);
             faces = [];
