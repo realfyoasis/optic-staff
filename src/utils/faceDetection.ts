@@ -169,16 +169,17 @@ export class FaceDetector {
       console.warn('ONNX face detection failed, will try TFJS fallback.', e);
     }
 
-    // If no faces or ONNX unavailable, try TFJS MediaPipe
-    if (!faces || faces.length === 0) {
-      try {
-        await tfjsFaceDetector.initialize();
-        faces = await tfjsFaceDetector.detectFromCanvas(canvasEl);
-      } catch (e) {
-        console.error('TFJS fallback detection failed:', e);
-        faces = [];
-      }
-    }
+        // If no faces or ONNX unavailable, try TFJS BlazeFace
+        if (!faces || faces.length === 0) {
+          try {
+            await tfjsFaceDetector.initialize();
+            faces = await tfjsFaceDetector.detectFromCanvas(canvasEl);
+            console.log(`[BlazeFace] Detected ${faces.length} faces as fallback`);
+          } catch (e) {
+            console.error('TFJS BlazeFace fallback detection failed:', e);
+            faces = [];
+          }
+        }
 
     return faces;
   }

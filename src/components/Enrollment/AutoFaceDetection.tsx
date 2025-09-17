@@ -40,7 +40,7 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
         await faceDetector.initialize();
         console.log('Face detector initialized successfully');
       } catch (detectorError) {
-        console.warn('ONNX detector initialization failed, will use TFJS fallback automatically:', detectorError);
+        console.warn('ONNX detector initialization failed, will use BlazeFace fallback automatically:', detectorError);
         // Don't return; we'll proceed and use fallback in detection step
       }
 

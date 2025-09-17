@@ -1,10 +1,10 @@
-import * as faceDetection from '@tensorflow-models/face-detection';
+import * as blazeface from '@tensorflow-models/blazeface';
 import '@tensorflow/tfjs-backend-webgl';
 import * as tf from '@tensorflow/tfjs-core';
 import type { DetectedFace } from './faceDetection';
 
 export class TFJSFaceDetector {
-  private detector: faceDetection.FaceDetector | null = null;
+  private model: blazeface.BlazeFaceModel | null = null;
   private initialized = false;
 
   async initialize() {
@@ -17,45 +17,60 @@ export class TFJSFaceDetector {
       }
       await tf.ready();
 
-      this.detector = await faceDetection.createDetector(
-        faceDetection.SupportedModels.MediaPipeFaceDetector,
-        {
-          runtime: 'tfjs',
-          modelType: 'short', // fast and decent accuracy
-          maxFaces: 10,
-        }
-      );
+      this.model = await blazeface.load();
       this.initialized = true;
-      console.log('[TFJS] MediaPipeFaceDetector initialized');
+      console.log('[TFJS] BlazeFace model initialized');
     } catch (e) {
-      console.error('[TFJS] Failed to initialize MediaPipeFaceDetector', e);
+      console.error('[TFJS] Failed to initialize BlazeFace model', e);
       throw e;
     }
   }
 
   async detectFromCanvas(canvas: HTMLCanvasElement): Promise<DetectedFace[]> {
-    if (!this.detector) throw new Error('TFJS detector not initialized');
+    if (!this.model) throw new Error('TFJS BlazeFace model not initialized');
 
     try {
-      const detections = await this.detector.estimateFaces(canvas);
-      const width = canvas.width;
-      const height = canvas.height;
+      const predictions = await this.model.estimateFaces(canvas, false);
+      
+      return predictions.map((prediction) => {
+        // Extract coordinates from tensors
+        const topLeft = Array.isArray(prediction.topLeft) ? 
+          prediction.topLeft : 
+          Array.from(prediction.topLeft.dataSync());
+        const bottomRight = Array.isArray(prediction.bottomRight) ? 
+          prediction.bottomRight : 
+          Array.from(prediction.bottomRight.dataSync());
 
-      return detections.map((det) => {
-        const box = det.box;
-        const confidence = 0.9; // MediaPipe Face Detector doesn't expose a score consistently
-        const landmarks = (det.keypoints || []).map((kp) => [kp.x, kp.y]);
+        const x = topLeft[0];
+        const y = topLeft[1];
+        const width = bottomRight[0] - topLeft[0];
+        const height = bottomRight[1] - topLeft[1];
+
+        // Extract landmarks if available
+        const landmarks: number[][] = [];
+        if (prediction.landmarks) {
+          if (Array.isArray(prediction.landmarks)) {
+            landmarks.push(...prediction.landmarks.map((landmark: number[]) => [landmark[0], landmark[1]]));
+          } else {
+            // Handle tensor case
+            const landmarkData = Array.from(prediction.landmarks.dataSync());
+            for (let i = 0; i < landmarkData.length; i += 2) {
+              landmarks.push([landmarkData[i], landmarkData[i + 1]]);
+            }
+          }
+        }
+
         return {
-          x: box.xMin,
-          y: box.yMin,
-          width: box.width,
-          height: box.height,
-          confidence,
+          x,
+          y,
+          width,
+          height,
+          confidence: prediction.probability || 0.9,
           landmarks,
         } as DetectedFace;
       });
     } catch (e) {
-      console.error('[TFJS] Face detection failed', e);
+      console.error('[TFJS] BlazeFace detection failed', e);
       return [];
     }
   }
