@@ -13,16 +13,18 @@ import {
   Phone, 
   Mail,
   Filter,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 
 interface EmployeeTableProps {
   employees: Employee[];
   searchTerm: string;
   onSearchChange: (term: string) => void;
+  onDeleteEmployee: (employeeId: string) => void;
 }
 
-const EmployeeTable = ({ employees, searchTerm, onSearchChange }: EmployeeTableProps) => {
+const EmployeeTable = ({ employees, searchTerm, onSearchChange, onDeleteEmployee }: EmployeeTableProps) => {
   const [sortBy, setSortBy] = useState<'name' | 'role' | 'status' | 'lastSeen'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -191,6 +193,7 @@ const EmployeeTable = ({ employees, searchTerm, onSearchChange }: EmployeeTableP
                       </button>
                     </th>
                     <th className="text-left p-3 font-semibold text-foreground">Contact</th>
+                    <th className="text-left p-3 font-semibold text-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,6 +252,16 @@ const EmployeeTable = ({ employees, searchTerm, onSearchChange }: EmployeeTableP
                             {employee.contact}
                           </span>
                         </div>
+                      </td>
+                      
+                      <td className="p-3">
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => onDeleteEmployee(employee.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}

@@ -14,8 +14,10 @@ interface AppState {
 type AppAction = 
   | { type: 'ADD_FEED'; payload: VideoFeed }
   | { type: 'UPDATE_FEED'; payload: VideoFeed }
+  | { type: 'DELETE_FEED'; payload: string }
   | { type: 'ADD_EMPLOYEE'; payload: Employee }
   | { type: 'UPDATE_EMPLOYEE'; payload: Employee }
+  | { type: 'DELETE_EMPLOYEE'; payload: string }
   | { type: 'ADD_MODEL'; payload: YoloModel }
   | { type: 'UPDATE_MODEL'; payload: YoloModel }
   | { type: 'DELETE_MODEL'; payload: string }
@@ -62,9 +64,9 @@ const loadFromStorage = (key: string, defaultValue: any) => {
 };
 
 const initialState: AppState = {
-  feeds: loadFromStorage('feeds', []),
-  employees: loadFromStorage('employees', []),
-  models: loadFromStorage('models', []),
+  feeds: [],
+  employees: [],
+  models: [],
   activityLogs: [],
   incidents: []
 };
@@ -84,6 +86,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         )
       };
       break;
+    case 'DELETE_FEED':
+      newState = {
+        ...state,
+        feeds: state.feeds.filter(feed => feed.id !== action.payload)
+      };
+      break;
     case 'ADD_EMPLOYEE':
       newState = { ...state, employees: [...state.employees, action.payload] };
       break;
@@ -93,6 +101,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         employees: state.employees.map(emp =>
           emp.id === action.payload.id ? action.payload : emp
         )
+      };
+      break;
+    case 'DELETE_EMPLOYEE':
+      newState = {
+        ...state,
+        employees: state.employees.filter(emp => emp.id !== action.payload)
       };
       break;
     case 'ADD_MODEL':
@@ -128,12 +142,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       newState = state;
   }
 
-  // Persist to localStorage
-  if (newState !== state) {
-    saveToStorage('feeds', newState.feeds);
-    saveToStorage('employees', newState.employees);
-    saveToStorage('models', newState.models);
-  }
+  // No persistence - everything starts fresh on reload
 
   return newState;
 };
@@ -143,8 +152,10 @@ interface AppContextType {
   dispatch: React.Dispatch<AppAction>;
   addFeed: (feed: VideoFeed) => void;
   updateFeed: (feed: VideoFeed) => void;
+  deleteFeed: (feedId: string) => void;
   addEmployee: (employee: Employee) => void;
   updateEmployee: (employee: Employee) => void;
+  deleteEmployee: (employeeId: string) => void;
   addModel: (model: YoloModel) => void;
   updateModel: (model: YoloModel) => void;
   deleteModel: (modelId: string) => void;
@@ -181,12 +192,20 @@ export const AppStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     dispatch({ type: 'UPDATE_FEED', payload: feed });
   };
 
+  const deleteFeed = (feedId: string) => {
+    dispatch({ type: 'DELETE_FEED', payload: feedId });
+  };
+
   const addEmployee = (employee: Employee) => {
     dispatch({ type: 'ADD_EMPLOYEE', payload: employee });
   };
 
   const updateEmployee = (employee: Employee) => {
     dispatch({ type: 'UPDATE_EMPLOYEE', payload: employee });
+  };
+
+  const deleteEmployee = (employeeId: string) => {
+    dispatch({ type: 'DELETE_EMPLOYEE', payload: employeeId });
   };
 
   const addModel = (model: YoloModel) => {
@@ -231,8 +250,10 @@ export const AppStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     dispatch,
     addFeed,
     updateFeed,
+    deleteFeed,
     addEmployee,
     updateEmployee,
+    deleteEmployee,
     addModel,
     updateModel,
     deleteModel,

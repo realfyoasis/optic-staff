@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { toast } = useToast();
-  const { state, addEmployee, addModel, getStats } = useAppStore();
+  const { state, addEmployee, addModel, getStats, deleteEmployee } = useAppStore();
 
   const stats = getStats();
 
@@ -71,6 +71,7 @@ const Index = () => {
               employees={state.employees}
               searchTerm=""
               onSearchChange={() => {}}
+              onDeleteEmployee={(employeeId) => deleteEmployee(employeeId)}
             />
           </div>
         );
@@ -115,6 +116,7 @@ const Index = () => {
               employees={state.employees}
               searchTerm=""
               onSearchChange={() => {}}
+              onDeleteEmployee={(employeeId) => deleteEmployee(employeeId)}
             />
           </div>
         );

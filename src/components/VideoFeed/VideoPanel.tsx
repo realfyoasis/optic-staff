@@ -12,15 +12,17 @@ import {
   Wifi,
   WifiOff,
   Play,
-  Pause
+  Pause,
+  Trash2
 } from 'lucide-react';
 
 interface VideoPanelProps {
   feed: VideoFeed;
   onEnrollEmployee: () => void;
+  onDeleteFeed: (feedId: string) => void;
 }
 
-const VideoPanel = ({ feed, onEnrollEmployee }: VideoPanelProps) => {
+const VideoPanel = ({ feed, onEnrollEmployee, onDeleteFeed }: VideoPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -235,6 +237,16 @@ const VideoPanel = ({ feed, onEnrollEmployee }: VideoPanelProps) => {
               >
                 <UserPlus className="h-3 w-3 mr-1" />
                 Enroll
+              </Button>
+              
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => onDeleteFeed(feed.id)}
+                className="h-8"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Delete
               </Button>
             </div>
 

@@ -11,11 +11,12 @@ import {
   Mail,
   Eye,
   Edit3,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 
 const EmployeeOverview = () => {
-  const { state } = useAppStore();
+  const { state, deleteEmployee } = useAppStore();
   
   // Show only enrolled employees (first 3 for overview)
   const displayEmployees = state.employees.slice(0, 3);
@@ -149,6 +150,15 @@ const EmployeeOverview = () => {
                         <Button variant="outline" size="sm" className="text-xs h-7">
                           <Edit3 className="h-3 w-3 mr-1" />
                           Edit
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="text-xs h-7"
+                          onClick={() => deleteEmployee(employee.id)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
                         </Button>
                       </div>
                     </div>

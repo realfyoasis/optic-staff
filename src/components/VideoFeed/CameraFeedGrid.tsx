@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Upload, AlertTriangle, Settings } from 'lucide-react';
+import { Camera, Upload, AlertTriangle, Settings, Trash2 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 
 interface CameraFeedGridProps {
@@ -10,7 +10,7 @@ interface CameraFeedGridProps {
 }
 
 const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
-  const { state } = useAppStore();
+  const { state, deleteFeed } = useAppStore();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -105,15 +105,25 @@ const CameraFeedGrid = ({ onEnrollEmployee }: CameraFeedGridProps) => {
                   )}
                 </div>
                 
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => onEnrollEmployee(feed.id)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {feed.lastFrame ? 'Enroll Employee' : 'Upload Video'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => onEnrollEmployee(feed.id)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {feed.lastFrame ? 'Enroll Employee' : 'Upload Video'}
+                  </Button>
+                  
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => deleteFeed(feed.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
             ))}

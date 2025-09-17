@@ -14,7 +14,7 @@ interface VideoGridProps {
 
 const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
   const { toast } = useToast();
-  const { state, addFeed } = useAppStore();
+  const { state, addFeed, deleteFeed } = useAppStore();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const handleVideoUpload = (videoUrl: string) => {
@@ -68,6 +68,7 @@ const VideoGrid = ({ onEnrollEmployee }: VideoGridProps) => {
               key={feed.id}
               feed={feed}
               onEnrollEmployee={() => onEnrollEmployee(feed.id)}
+              onDeleteFeed={(feedId) => deleteFeed(feedId)}
             />
           ))}
           
