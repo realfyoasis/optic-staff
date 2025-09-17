@@ -153,6 +153,8 @@ interface AppContextType {
   getStats: () => {
     totalEmployees: number;
     onlineEmployees: number;
+    offlineEmployees: number;
+    totalFeeds: number;
     activeFeeds: number;
     totalIncidents: number;
   };
@@ -207,12 +209,22 @@ export const AppStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     dispatch({ type: 'ADD_INCIDENT', payload: incident });
   };
 
-  const getStats = () => ({
-    totalEmployees: state.employees.length,
-    onlineEmployees: state.employees.filter(emp => emp.status === 'online').length,
-    activeFeeds: state.feeds.filter(feed => feed.status === 'active').length,
-    totalIncidents: state.incidents.length,
-  });
+  const getStats = () => {
+    const totalEmployees = state.employees.length;
+    const onlineEmployees = state.employees.filter(emp => emp.status === 'online').length;
+    const offlineEmployees = totalEmployees - onlineEmployees;
+    const totalFeeds = state.feeds.length;
+    const activeFeeds = state.feeds.filter(feed => feed.status === 'active').length;
+    
+    return {
+      totalEmployees,
+      onlineEmployees,
+      offlineEmployees,
+      totalFeeds,
+      activeFeeds,
+      totalIncidents: state.incidents.length,
+    };
+  };
 
   const value: AppContextType = {
     state,
