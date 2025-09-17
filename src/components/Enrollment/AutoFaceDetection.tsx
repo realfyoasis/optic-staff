@@ -35,16 +35,13 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
       setIsDetecting(true);
       console.log('Starting face detection initialization...');
       
-      // Initialize face detector if not already done
+      // Initialize face detector (ONNX). If it fails, we'll fall back to TFJS during detection.
       try {
         await faceDetector.initialize();
         console.log('Face detector initialized successfully');
       } catch (detectorError) {
-        console.error('Face detector initialization failed:', detectorError);
-        // Continue without face detection - show manual crop option
-        setIsDetecting(false);
-        toast.error('Face detection unavailable. You can manually select the face area.');
-        return;
+        console.warn('ONNX detector initialization failed, will use TFJS fallback automatically:', detectorError);
+        // Don't return; we'll proceed and use fallback in detection step
       }
 
       try {
@@ -112,8 +109,8 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
         // Get image data for face detection
         const imageData = ctx.getImageData(0, 0, newWidth, newHeight);
         
-        // Detect faces with timeout
-        const detectionPromise = faceDetector.detectFaces(imageData);
+        // Detect faces with timeout (uses ONNX first, then TFJS fallback)
+        const detectionPromise = faceDetector.detectFacesWithFallback(imageData, canvas);
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Detection timeout')), 10000)
         );

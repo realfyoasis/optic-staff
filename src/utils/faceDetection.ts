@@ -1,4 +1,5 @@
 import * as ort from 'onnxruntime-web';
+import { tfjsFaceDetector } from './faceDetectionFallback';
 
 export interface DetectedFace {
   x: number;
@@ -155,6 +156,31 @@ export class FaceDetector {
     faceCtx.drawImage(canvas, x, y, width, height, 0, 0, 224, 224);
     
     return faceCanvas.toDataURL('image/jpeg', 0.8);
+  }
+
+  async detectFacesWithFallback(imageData: ImageData, canvasEl: HTMLCanvasElement): Promise<DetectedFace[]> {
+    // Try ONNX YuNet first if available
+    let faces: DetectedFace[] = [];
+    try {
+      if (this.session && this.isInitialized) {
+        faces = await this.detectFaces(imageData);
+      }
+    } catch (e) {
+      console.warn('ONNX face detection failed, will try TFJS fallback.', e);
+    }
+
+    // If no faces or ONNX unavailable, try TFJS MediaPipe
+    if (!faces || faces.length === 0) {
+      try {
+        await tfjsFaceDetector.initialize();
+        faces = await tfjsFaceDetector.detectFromCanvas(canvasEl);
+      } catch (e) {
+        console.error('TFJS fallback detection failed:', e);
+        faces = [];
+      }
+    }
+
+    return faces;
   }
 }
 
