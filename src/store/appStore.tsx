@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { VideoFeed, Employee, YoloModel, ActivityLog, Incident } from '@/types/employee';
 
+// Define the state shape
 interface AppState {
   feeds: VideoFeed[];
   employees: Employee[];
@@ -9,10 +10,10 @@ interface AppState {
   incidents: Incident[];
 }
 
-type AppAction =
+// Define action types
+type AppAction = 
   | { type: 'ADD_FEED'; payload: VideoFeed }
   | { type: 'UPDATE_FEED'; payload: VideoFeed }
-  | { type: 'DELETE_FEED'; payload: string }
   | { type: 'ADD_EMPLOYEE'; payload: Employee }
   | { type: 'UPDATE_EMPLOYEE'; payload: Employee }
   | { type: 'ADD_MODEL'; payload: YoloModel }
@@ -83,12 +84,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         )
       };
       break;
-    case 'DELETE_FEED':
-      newState = {
-        ...state,
-        feeds: state.feeds.filter(feed => feed.id !== action.payload)
-      };
-      break;
     case 'ADD_EMPLOYEE':
       newState = { ...state, employees: [...state.employees, action.payload] };
       break;
@@ -149,6 +144,7 @@ interface AppContextType {
   addFeed: (feed: VideoFeed) => void;
   updateFeed: (feed: VideoFeed) => void;
   addEmployee: (employee: Employee) => void;
+  updateEmployee: (employee: Employee) => void;
   addModel: (model: YoloModel) => void;
   updateModel: (model: YoloModel) => void;
   deleteModel: (modelId: string) => void;
@@ -157,10 +153,8 @@ interface AppContextType {
   getStats: () => {
     totalEmployees: number;
     onlineEmployees: number;
-    offlineEmployees: number;
-    totalIncidents: number;
     activeFeeds: number;
-    totalFeeds: number;
+    totalIncidents: number;
   };
 }
 
@@ -168,92 +162,14 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const useAppStore = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useAppStore must be used within AppStoreProvider');
+  if (context === undefined) {
+    throw new Error('useAppStore must be used within an AppStoreProvider');
   }
   return context;
 };
 
-interface AppStoreProviderProps {
-  children: ReactNode;
-}
-
-export const AppStoreProvider: React.FC<AppStoreProviderProps> = ({ children }) => {
+export const AppStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-
-  // Real-time simulation for enrolled employees and active feeds
-  useEffect(() => {
-    if (state.employees.length === 0 && state.feeds.length === 0) return;
-
-    const interval = setInterval(() => {
-      // Update employee statuses
-      if (state.employees.length > 0) {
-        state.employees.forEach(emp => {
-          if (Math.random() > 0.9) {
-            const updatedEmployee = {
-              ...emp,
-              status: (['online', 'break', 'offline'][Math.floor(Math.random() * 3)] as Employee['status']),
-              lastSeen: Math.random() > 0.8 ? new Date() : emp.lastSeen,
-            };
-            dispatch({ type: 'UPDATE_EMPLOYEE', payload: updatedEmployee });
-          }
-        });
-
-        // Add activity logs for enrolled employees
-        if (Math.random() > 0.7) {
-          const randomEmployee = state.employees[Math.floor(Math.random() * state.employees.length)];
-          const randomFeed = state.feeds[Math.floor(Math.random() * state.feeds.length)];
-          if (randomFeed) {
-            const newLog: ActivityLog = {
-              timestamp: new Date(),
-              employeeId: randomEmployee.id,
-              employeeName: randomEmployee.name,
-              cameraIndex: randomFeed.name,
-              eventType: ['entry', 'exit', 'detected'][Math.floor(Math.random() * 3)] as ActivityLog['eventType'],
-              location: randomFeed.location,
-            };
-            dispatch({ type: 'ADD_ACTIVITY_LOG', payload: newLog });
-          }
-        }
-      }
-
-      // Update feed employee detections based on enrolled employees and active models
-      if (state.feeds.length > 0 && state.employees.length > 0) {
-        const activeModels = state.models.filter(m => m.isActive && m.type === 'person_detection');
-        
-        const updatedFeeds = state.feeds.map(feed => {
-          // Only show detections if there are active person detection models applied to this feed
-          const hasActiveModel = activeModels.some(model => model.appliedFeeds.includes(feed.id));
-          
-          if (!hasActiveModel) {
-            return { ...feed, employees: [] };
-          }
-
-          // Simulate random employee detections from enrolled employees
-          const detectedEmployees = state.employees
-            .filter(() => Math.random() > 0.6) // Random chance of detection
-            .map(emp => ({
-              employeeId: emp.id,
-              name: emp.name,
-              confidence: Math.random() * 0.4 + 0.6, // 60-100% confidence
-              bbox: {
-                x: Math.random() * 200 + 50,
-                y: Math.random() * 150 + 30,
-                width: 80 + Math.random() * 40,
-                height: 100 + Math.random() * 50,
-              },
-              timestamp: new Date(),
-            }));
-
-          return { ...feed, employees: detectedEmployees };
-        });
-
-        dispatch({ type: 'UPDATE_FEEDS', payload: updatedFeeds });
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [state.employees.length, state.feeds.length, state.models]);
 
   const addFeed = (feed: VideoFeed) => {
     dispatch({ type: 'ADD_FEED', payload: feed });
@@ -265,6 +181,10 @@ export const AppStoreProvider: React.FC<AppStoreProviderProps> = ({ children }) 
 
   const addEmployee = (employee: Employee) => {
     dispatch({ type: 'ADD_EMPLOYEE', payload: employee });
+  };
+
+  const updateEmployee = (employee: Employee) => {
+    dispatch({ type: 'UPDATE_EMPLOYEE', payload: employee });
   };
 
   const addModel = (model: YoloModel) => {
@@ -289,11 +209,9 @@ export const AppStoreProvider: React.FC<AppStoreProviderProps> = ({ children }) 
 
   const getStats = () => ({
     totalEmployees: state.employees.length,
-    onlineEmployees: state.employees.filter(e => e.status === 'online').length,
-    offlineEmployees: state.employees.filter(e => e.status === 'offline').length,
+    onlineEmployees: state.employees.filter(emp => emp.status === 'online').length,
+    activeFeeds: state.feeds.filter(feed => feed.status === 'active').length,
     totalIncidents: state.incidents.length,
-    activeFeeds: state.feeds.filter(f => f.status === 'active').length,
-    totalFeeds: state.feeds.length,
   });
 
   const value: AppContextType = {
@@ -302,6 +220,7 @@ export const AppStoreProvider: React.FC<AppStoreProviderProps> = ({ children }) 
     addFeed,
     updateFeed,
     addEmployee,
+    updateEmployee,
     addModel,
     updateModel,
     deleteModel,
