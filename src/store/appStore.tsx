@@ -34,7 +34,26 @@ const saveToStorage = (key: string, data: any) => {
 const loadFromStorage = (key: string, defaultValue: any) => {
   try {
     const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
+    if (!stored) return defaultValue;
+    
+    const parsed = JSON.parse(stored);
+    
+    // Convert date strings back to Date objects for specific data types
+    if (key === 'employees') {
+      return parsed.map((emp: any) => ({
+        ...emp,
+        lastSeen: new Date(emp.lastSeen)
+      }));
+    }
+    
+    if (key === 'models') {
+      return parsed.map((model: any) => ({
+        ...model,
+        uploadDate: new Date(model.uploadDate)
+      }));
+    }
+    
+    return parsed;
   } catch (error) {
     console.error('Failed to load from localStorage:', error);
     return defaultValue;
