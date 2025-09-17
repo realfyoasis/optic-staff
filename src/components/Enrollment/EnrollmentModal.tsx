@@ -48,12 +48,19 @@ export const EnrollmentModal = ({
   // Set step when modal opens or feed changes
   useEffect(() => {
     if (!isOpen) return;
-    if (feedId === 'upload' && !currentFeedImage) {
+    if (feedId === 'upload' && !feedImage && !currentFeedImage) {
       setStep('upload');
     } else {
       setStep('capture');
     }
-  }, [isOpen, feedId, currentFeedImage]);
+  }, [isOpen, feedId, feedImage, currentFeedImage]);
+
+  // Update current feed image when prop changes
+  useEffect(() => {
+    if (feedImage) {
+      setCurrentFeedImage(feedImage);
+    }
+  }, [feedImage]);
 
   const grabFrame = () => {
     const video = videoRef.current;
