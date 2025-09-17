@@ -33,31 +33,59 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
   const initializeDetection = async () => {
     try {
       setIsDetecting(true);
+      console.log('Starting face detection initialization...');
       
       // Initialize face detector if not already done
-      await faceDetector.initialize();
-      await faceEmbeddingGenerator.initialize();
+      try {
+        await faceDetector.initialize();
+        console.log('Face detector initialized successfully');
+      } catch (detectorError) {
+        console.error('Face detector initialization failed:', detectorError);
+        // Continue without face detection - show manual crop option
+        setIsDetecting(false);
+        toast.error('Face detection unavailable. You can manually select the face area.');
+        return;
+      }
+
+      try {
+        await faceEmbeddingGenerator.initialize();
+        console.log('Embedding generator initialized successfully');
+      } catch (embeddingError) {
+        console.error('Embedding generator initialization failed:', embeddingError);
+        // Continue with face detection but without embeddings
+      }
       
       // Load and process image
       await loadAndDetectFaces();
     } catch (error) {
       console.error('Failed to initialize face detection:', error);
-      toast.error('Failed to initialize face detection system');
+      setIsDetecting(false);
+      toast.error('Face detection failed. Please try again or contact support.');
     }
   };
 
   const loadAndDetectFaces = async () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current) {
+      console.error('Canvas not available');
+      setIsDetecting(false);
+      return;
+    }
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('Canvas context not available');
+      setIsDetecting(false);
+      return;
+    }
 
     const image = new Image();
     image.crossOrigin = 'anonymous';
     
     image.onload = async () => {
       try {
+        console.log('Image loaded, processing...');
+        
         // Set canvas dimensions
         const maxWidth = 800;
         const maxHeight = 600;
@@ -79,35 +107,53 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
         ctx.drawImage(image, 0, 0, newWidth, newHeight);
         imageRef.current = image;
         
+        console.log('Canvas setup complete, starting face detection...');
+        
         // Get image data for face detection
         const imageData = ctx.getImageData(0, 0, newWidth, newHeight);
         
-        // Detect faces
-        const faces = await faceDetector.detectFaces(imageData);
-        setDetectedFaces(faces);
+        // Detect faces with timeout
+        const detectionPromise = faceDetector.detectFaces(imageData);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Detection timeout')), 10000)
+        );
         
-        // Draw bounding boxes
-        drawFaceBoundingBoxes(faces);
-        
-        setIsDetecting(false);
-        
-        if (faces.length === 0) {
-          toast.warning('No faces detected in the image');
-        } else {
-          toast.success(`${faces.length} face(s) detected. Click on a face to select it.`);
+        try {
+          const faces = await Promise.race([detectionPromise, timeoutPromise]) as DetectedFace[];
+          console.log(`Face detection completed. Found ${faces.length} faces`);
+          
+          setDetectedFaces(faces);
+          
+          // Draw bounding boxes
+          drawFaceBoundingBoxes(faces);
+          
+          setIsDetecting(false);
+          
+          if (faces.length === 0) {
+            toast.warning('No faces detected. You can manually crop the image.');
+          } else {
+            toast.success(`${faces.length} face(s) detected. Click on a face to select it.`);
+          }
+        } catch (detectionError) {
+          console.error('Face detection failed:', detectionError);
+          setIsDetecting(false);
+          setDetectedFaces([]);
+          toast.error('Face detection timed out. Please try with a clearer image.');
         }
       } catch (error) {
-        console.error('Face detection failed:', error);
-        toast.error('Face detection failed');
+        console.error('Image processing failed:', error);
         setIsDetecting(false);
+        toast.error('Failed to process image');
       }
     };
     
     image.onerror = () => {
-      toast.error('Failed to load image');
+      console.error('Failed to load image');
       setIsDetecting(false);
+      toast.error('Failed to load image');
     };
     
+    console.log('Loading image from:', imageUrl);
     image.src = imageUrl;
   };
 
@@ -274,22 +320,37 @@ export const AutoFaceDetection: React.FC<AutoFaceDetectionProps> = ({
               Cancel
             </Button>
             
-            <Button
-              onClick={handleConfirmSelection}
-              disabled={selectedFaceIndex === null || isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <User className="mr-2 h-4 w-4" />
-                  Confirm Selection
-                </>
-              )}
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Skip face detection and proceed with manual crop
+                  setIsDetecting(false);
+                  setDetectedFaces([]);
+                  toast.info('Proceeding without face detection');
+                }}
+                disabled={isDetecting}
+              >
+                Skip Detection
+              </Button>
+              
+              <Button
+                onClick={handleConfirmSelection}
+                disabled={selectedFaceIndex === null || isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <User className="mr-2 h-4 w-4" />
+                    Confirm Selection
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
